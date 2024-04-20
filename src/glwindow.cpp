@@ -9,7 +9,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp> 
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
 
@@ -167,9 +169,28 @@ void OpenGLWindow::initGL()
     void* vertices = sun_geom.vertexData();
     int count = sun_geom.vertexCount();
 
+    // Calculate centroid
+    glm::vec3 centroid(0.0f, 0.0f, 0.0f);
+    float* verts = static_cast<float*>(vertices);
+    for (int i = 0; i < count; ++i) {
+        centroid.x += verts[3*i];   // x component
+        centroid.y += verts[3*i+1]; // y component
+        centroid.z += verts[3*i+2]; // z component
+    }
+    centroid /= count;
+    delete verts;
+    //centroid.z += 5.0f;
+    cout << "x: " << centroid.x << " y: " << centroid.y << " z: " << centroid.z << "\n";
+    // Assuming centroid is computed
+    // Move the centroid to the origin and then translate the object to (0, 0, -5)
+    glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f)) * glm::translate(glm::mat4(1.0f), -centroid);
+
+    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, &trans[0][0]);
+
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, count*sizeof(float), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count*sizeof(float), vertices, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, false, 0, 0);
     glEnableVertexAttribArray(vertexLoc);
 
