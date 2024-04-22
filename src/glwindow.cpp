@@ -162,37 +162,39 @@ void OpenGLWindow::initGL()
     //GeometryData geometry = loadOBJFile("tri.obj");
 
     int vertexLoc = glGetAttribLocation(shader, "position");
-    //float vertices[9] = { 0.0f,  0.5f, 0.0f,
-    //                     -0.5f, -0.5f, 0.0f,
-    //                      0.5f, -0.5f, 0.0f };
-    sun_geom.loadFromOBJFile("sphere.obj");
-    void* vertices = sun_geom.vertexData();
-    int count = sun_geom.vertexCount();
+    float vertices_tri[9] = { 0.0f,  0.5f, 0.0f,
+                         -0.5f, -0.5f, 0.0f,
+                          0.5f, -0.5f, 0.0f };
+    //sun_geom.loadFromOBJFile("sphere.obj");
+    //void* vertices = sun_geom.vertexData();
+    //int count = sun_geom.vertexCount();
 
-    // Calculate centroid
-    glm::vec3 centroid(0.0f, 0.0f, 0.0f);
-    float* verts = static_cast<float*>(vertices);
-    for (int i = 0; i < count; ++i) {
-        centroid.x += verts[3*i];   // x component
-        centroid.y += verts[3*i+1]; // y component
-        centroid.z += verts[3*i+2]; // z component
-    }
-    centroid /= count;
-    delete verts;
-    //centroid.z += 5.0f;
-    cout << "x: " << centroid.x << " y: " << centroid.y << " z: " << centroid.z << "\n";
-    // Assuming centroid is computed
-    // Move the centroid to the origin and then translate the object to (0, 0, -5)
-    glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f)) * glm::translate(glm::mat4(1.0f), -centroid);
-
-    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, &trans[0][0]);
 
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, count*sizeof(float), vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices_tri, GL_STATIC_DRAW);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, false, 0, 0);
     glEnableVertexAttribArray(vertexLoc);
+
+    //MODEL
+    glm::mat4 model = glm::mat4(1.0f); 
+    //VIEW
+    glm::vec3 lookat = glm::vec3(1.0f);
+    glm::vec3 camera = glm::vec3(0,0,2);
+    glm::vec3 up = glm::vec3(0,1,0);
+    glm::mat4 view = glm::lookAt(camera, lookat, up);
+    //PROJ
+    glm::mat4 proj = glm::perspective(glm::radians(100.0f), (float) 640/480, 0.1f, 100.0f);
+
+    glm::mat4 MVP = proj * view * model;
+
+    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, -5.0f));
+
+    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(translate));
+
+    unsigned int MVPloc = glGetUniformLocation(shader, "MVP");
+    glUniformMatrix4fv(MVPloc, 1, GL_FALSE, glm::value_ptr(MVP));
 
     glPrintError("Setup complete", true);
 }
@@ -201,7 +203,7 @@ void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDrawArrays(GL_TRIANGLES, 0, sun_geom.vertexCount());
+    glDrawArrays(GL_TRIANGLES, 0,3);
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
