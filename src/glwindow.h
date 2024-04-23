@@ -17,7 +17,7 @@ public:
 
 private:
     SDL_Window* sdlWin;
-
+    int vertexCount;
     GLuint vao;
     GLuint shader;
     GLuint vertexBuffer;

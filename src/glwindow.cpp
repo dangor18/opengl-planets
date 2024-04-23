@@ -155,40 +155,36 @@ void OpenGLWindow::initGL()
     shader = loadShaderProgram("simple.vert", "simple.frag");
     glUseProgram(shader);
 
-    int colorLoc = glGetUniformLocation(shader, "objectColor");
-    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
-
-    // Load the model that we want to use and buffer the vertex attributes
-    //GeometryData geometry = loadOBJFile("tri.obj");
-
     int vertexLoc = glGetAttribLocation(shader, "position");
     float vertices_tri[9] = { 0.0f,  0.5f, 0.0f,
                          -0.5f, -0.5f, 0.0f,
                           0.5f, -0.5f, 0.0f };
-    //sun_geom.loadFromOBJFile("sphere.obj");
-    //void* vertices = sun_geom.vertexData();
-    //int count = sun_geom.vertexCount();
-
+    
+    // Load the model that we want to use and buffer the vertex attributes
+    GeometryData geom;
+    geom.loadFromOBJFile("sphere_correct.obj");
+    void* vertices = geom.vertexData();
+    vertexCount = geom.vertexCount();
 
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices_tri, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, false, 0, 0);
     glEnableVertexAttribArray(vertexLoc);
 
     //MODEL
-    glm::mat4 model = glm::mat4(1.0f); 
+    glm::mat4 model = glm::mat4(1.0f);
     //VIEW
-    glm::vec3 lookat = glm::vec3(1.0f);
-    glm::vec3 camera = glm::vec3(0,0,2);
-    glm::vec3 up = glm::vec3(0,1,0);
+    glm::vec3 lookat = glm::vec3(0.0f);
+    glm::vec3 camera = glm::vec3(0.0f,0.0f,5.0f);
+    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
     glm::mat4 view = glm::lookAt(camera, lookat, up);
     //PROJ
     glm::mat4 proj = glm::perspective(glm::radians(100.0f), (float) 640/480, 0.1f, 100.0f);
-
+    // MVP
     glm::mat4 MVP = proj * view * model;
 
-    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, -5.0f));
+    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 
     unsigned int transformLoc = glGetUniformLocation(shader, "transform");
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(translate));
@@ -203,7 +199,29 @@ void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDrawArrays(GL_TRIANGLES, 0,3);
+    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
+    int colorLoc = glGetUniformLocation(shader, "objectColor");
+    glm::mat4 sun_trans = glm::mat4(1.0f);
+    glm::mat4 earth_trans = glm::mat4(1.0f);
+    glm::mat4 moon_trans = glm::mat4(1.0f);
+    // Draw Sun
+    sun_trans = glm::translate(sun_trans, glm::vec3(0.0f, 0.0f, 0.0f));
+    sun_trans = glm::scale(sun_trans, glm::vec3(1.0f, 1.0f, 1.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(sun_trans));
+    glUniform3f(colorLoc, 255.0f, 255.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    // Draw Earth
+    earth_trans = glm::translate(earth_trans, glm::vec3(2.0f, 0.0f, 0.0f));
+    earth_trans = glm::scale(earth_trans, glm::vec3(0.4f, 0.4f, 0.4f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
+    glUniform3f(colorLoc, 0.0f, 0.0f, 255.0f);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    // Draw Moon
+    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
+    moon_trans = glm::translate(moon_trans, glm::vec3(2.8f, 0.0f, 0.0f));
+    moon_trans = glm::scale(moon_trans, glm::vec3(0.2f, 0.2f, 0.2f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
