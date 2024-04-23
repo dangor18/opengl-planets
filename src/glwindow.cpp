@@ -198,28 +198,34 @@ void OpenGLWindow::initGL()
 void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    if (time >= 360.0f)
+        time = 0.0f;
+    else
+        time++;
+    
     unsigned int transformLoc = glGetUniformLocation(shader, "transform");
     int colorLoc = glGetUniformLocation(shader, "objectColor");
-    glm::mat4 sun_trans = glm::mat4(1.0f);
-    glm::mat4 earth_trans = glm::mat4(1.0f);
-    glm::mat4 moon_trans = glm::mat4(1.0f);
+    
     // Draw Sun
-    sun_trans = glm::translate(sun_trans, glm::vec3(0.0f, 0.0f, 0.0f));
-    sun_trans = glm::scale(sun_trans, glm::vec3(1.0f, 1.0f, 1.0f));
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(sun_trans));
+    //sun_trans = glm::translate(sun_trans, glm::vec3(0.0f, 0.0f, 0.0f));
+    //sun_trans = glm::scale(sun_trans, glm::vec3(1.0f, 1.0f, 1.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
     glUniform3f(colorLoc, 255.0f, 255.0f, 0.0f);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     // Draw Earth
-    earth_trans = glm::translate(earth_trans, glm::vec3(2.0f, 0.0f, 0.0f));
-    earth_trans = glm::scale(earth_trans, glm::vec3(0.4f, 0.4f, 0.4f));
+    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(time), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.2f, 0.0f, 0.0f));
+    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+    glm::mat4 earth_trans = c1 * earth_r * earth_t * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
     glUniform3f(colorLoc, 0.0f, 0.0f, 255.0f);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     // Draw Moon
     glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
-    moon_trans = glm::translate(moon_trans, glm::vec3(2.8f, 0.0f, 0.0f));
-    moon_trans = glm::scale(moon_trans, glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(time), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
+    glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -239,6 +245,27 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         if(e.key.keysym.sym == SDLK_ESCAPE)
         {
             return false;
+        }
+
+        if(e.key.keysym.sym == SDLK_UP)
+        {
+            c1++;
+            std::cout << c1 << "\n";
+        }
+
+        if(e.key.keysym.sym == SDLK_DOWN)
+        {
+            c1 == 1 ? c1 = 1 : c1--;
+        }
+
+        if(e.key.keysym.sym == SDLK_LEFT)
+        {
+            c2 == 1 ? c2 = 1 : c2--;
+        }
+
+        if(e.key.keysym.sym == SDLK_RIGHT)
+        {
+            c2++;
         }
     }
     return true;
