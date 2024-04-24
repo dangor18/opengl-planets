@@ -17,8 +17,6 @@ public:
 
 private:
     SDL_Window* sdlWin;
-
-    GeometryData sun_geom;
     GLuint vao;
     GLuint shader;
     GLuint vertexBuffer;

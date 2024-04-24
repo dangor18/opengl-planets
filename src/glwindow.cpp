@@ -9,9 +9,25 @@
 
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp> 
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
+
+int vertexCount;
+int frame = 0;
+// speed variables
+float earth_speed = 1.0f;
+float moon_speed = 1.0f;
+// angles
+float theta = 0;
+float beta = 0;
+
+// pause flag
+bool paused = false;
+// if paused set to 0 to stop updating angle
+int p = 1;
 
 const char* glGetErrorString(GLenum error)
 {
@@ -153,25 +169,42 @@ void OpenGLWindow::initGL()
     shader = loadShaderProgram("simple.vert", "simple.frag");
     glUseProgram(shader);
 
-    int colorLoc = glGetUniformLocation(shader, "objectColor");
-    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
-
-    // Load the model that we want to use and buffer the vertex attributes
-    //GeometryData geometry = loadOBJFile("tri.obj");
-
     int vertexLoc = glGetAttribLocation(shader, "position");
-    //float vertices[9] = { 0.0f,  0.5f, 0.0f,
-    //                     -0.5f, -0.5f, 0.0f,
-    //                      0.5f, -0.5f, 0.0f };
-    sun_geom.loadFromOBJFile("sphere.obj");
-    void* vertices = sun_geom.vertexData();
-    int count = sun_geom.vertexCount();
+    float vertices_tri[9] = { 0.0f,  0.5f, 0.0f,
+                         -0.5f, -0.5f, 0.0f,
+                          0.5f, -0.5f, 0.0f };
+    
+    // Load the model that we want to use and buffer the vertex attributes
+    GeometryData geom;
+    geom.loadFromOBJFile("sphere_correct.obj");
+    void* vertices = geom.vertexData();
+    vertexCount = geom.vertexCount();
 
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, count*sizeof(float), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, false, 0, 0);
     glEnableVertexAttribArray(vertexLoc);
+
+    //MODEL
+    glm::mat4 model = glm::mat4(1.0f);
+    //VIEW
+    glm::vec3 lookat = glm::vec3(0.0f);
+    glm::vec3 camera = glm::vec3(0.0f,0.0f,5.0f);
+    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    glm::mat4 view = glm::lookAt(camera, lookat, up);
+    //PROJ
+    glm::mat4 proj = glm::perspective(glm::radians(100.0f), (float) 640/480, 0.1f, 100.0f);
+    // MVP
+    glm::mat4 MVP = proj * view * model;
+
+    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+
+    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(translate));
+
+    unsigned int MVPloc = glGetUniformLocation(shader, "MVP");
+    glUniformMatrix4fv(MVPloc, 1, GL_FALSE, glm::value_ptr(MVP));
 
     glPrintError("Setup complete", true);
 }
@@ -179,8 +212,38 @@ void OpenGLWindow::initGL()
 void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    // get vertex var locations
+    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
+    int colorLoc = glGetUniformLocation(shader, "objectColor");
+    
+    // calc angles
+    theta += p*earth_speed;
+    beta += p*moon_speed;
 
-    glDrawArrays(GL_TRIANGLES, 0, sun_geom.vertexCount());
+    // Draw Sun at (0, 0, 0)
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+    glUniform3f(colorLoc, 255.0f, 255.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    // Draw Earth
+    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.2f, 0.0f, 0.0f));
+    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+    glm::mat4 earth_trans = earth_r * earth_t * earth_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
+    glUniform3f(colorLoc, 0.0f, 0.0f, 255.0f);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    // Draw Moon
+    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
+    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
+    glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+    // increment frame count
+    frame++;
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
@@ -198,6 +261,32 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         if(e.key.keysym.sym == SDLK_ESCAPE)
         {
             return false;
+        }
+
+        if(e.key.keysym.sym == SDLK_UP)
+        {
+            earth_speed+=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_DOWN)
+        {
+            earth_speed <= 1 ? earth_speed = 1 : earth_speed-=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_LEFT)
+        {
+            moon_speed <= 1 ? moon_speed = 1 : moon_speed-=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_RIGHT)
+        {
+            moon_speed+=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_p)
+        {
+            if (p == 1) { p = 0; }
+            else { p = 1; }
         }
     }
     return true;
