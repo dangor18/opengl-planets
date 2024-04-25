@@ -26,7 +26,19 @@ float moon_speed = 1.0f;
 // angles
 float theta = 0;
 float beta = 0;
+/*
+struct image 
+{
+    unsigned char* data;
+    int width;
+    int height;
+    int nrChannels;
+};
 
+image sun_tex;
+image earth_tex;
+image moon_tex;
+*/
 // pause flag
 bool paused = false;
 // if paused set to 0 to stop updating angle
@@ -186,7 +198,6 @@ void OpenGLWindow::initGL()
         1.0f, 0.0f,
         0.0f, 0.0f
     };
-
     
     // Load the model that we want to use and buffer the vertex attributes
     GeometryData geom;
@@ -217,18 +228,19 @@ void OpenGLWindow::initGL()
     glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(texLoc);
     
-    // create 1 texture obj and bind it
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);  
+    // create texture objs
+    glGenTextures(1, &sun_texture); 
+    glGenTextures(1, &earth_texture);
+    glGenTextures(1, &moon_texture);
 
-    // set the texture wrapping/filtering options (on the currently bound texture object) - learnopengl.com/Getting-started/Textures
+    // set the texture wrapping/filtering options (on the currently bound texture object)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // use stb to load image and save w,h,c
+    // load and generate the texture from each file - taken from learnopengl.com/Getting-started/Textures
+    glBindTexture(GL_TEXTURE_2D, sun_texture);
     int width, height, nrChannels;
     unsigned char *data = stbi_load("Suns/diffuse0.jpg", &width, &height, &nrChannels, 0);
     if (data)
@@ -238,9 +250,34 @@ void OpenGLWindow::initGL()
     }
     else
     {
-        std::cout << "Failed to load texture" << std::endl;
+        std::cout << "Failed to load Sun texture" << std::endl;
     }
+    stbi_image_free(data);
 
+    glBindTexture(GL_TEXTURE_2D, earth_texture);
+    data = stbi_load("Earth/diffuse.png", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load Earth texture" << std::endl;
+    }
+    stbi_image_free(data);
+
+    glBindTexture(GL_TEXTURE_2D, moon_texture);
+    data = stbi_load("Moon/diffuse.png", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load Moon texture" << std::endl;
+    }
     stbi_image_free(data);
 
     //MODEL
@@ -262,24 +299,13 @@ void OpenGLWindow::initGL()
     
     glPrintError("Setup complete", true);
 }
+
 void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-    // Swap the front and back buffers on the window, effectively putting what we just "drew"
-    // onto the screen (whereas previously it only existed in memory)
-    SDL_GL_SwapWindow(sdlWin);
-}
-/*
-void OpenGLWindow::render_planets()
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
     // get vertex var locations
-    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
-    int colorLoc = glGetUniformLocation(shader, "objectColor");
+    unsigned int transformLoc = glGetUniformLocation(shader, "model");
     
     // calc angles
     theta += p*earth_speed;
@@ -287,7 +313,8 @@ void OpenGLWindow::render_planets()
 
     // Draw Sun at (0, 0, 0)
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
-    glUniform3f(colorLoc, 255.0f, 255.0f, 0.0f);
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     // Draw Earth
     glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -295,25 +322,24 @@ void OpenGLWindow::render_planets()
     glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
     glm::mat4 earth_trans = earth_r * earth_t * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
-    glUniform3f(colorLoc, 0.0f, 0.0f, 255.0f);
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, earth_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     // Draw Moon
-    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
     glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-    // increment frame count
-    frame++;
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
     SDL_GL_SwapWindow(sdlWin);
 }
-*/
+
 // The program will exit if this function returns false
 bool OpenGLWindow::handleEvent(SDL_Event e)
 {
@@ -359,6 +385,11 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
 void OpenGLWindow::cleanup()
 {
     glDeleteBuffers(1, &vertexBuffer);
+    glDeleteBuffers(1, &textureBuffer);
+    glDeleteBuffers(1, &sun_texture);
+    glDeleteBuffers(1, &earth_texture);
+    glDeleteBuffers(1, &moon_texture);
+
     glDeleteVertexArrays(1, &vao);
     SDL_DestroyWindow(sdlWin);
 }

@@ -2,6 +2,7 @@
 #define GL_WINDOW_H
 
 #include <GL/glew.h>
+#include <string>
 
 #include "geometry.h"
 
@@ -12,6 +13,7 @@ public:
 
     void initGL();
     void render();
+    unsigned char* loadImage(const char* file_name);
     bool handleEvent(SDL_Event e);
     void cleanup();
 
@@ -21,6 +23,9 @@ private:
     GLuint shader;
     GLuint vertexBuffer;
     GLuint textureBuffer;
+    GLuint sun_texture;
+    GLuint earth_texture;
+    GLuint moon_texture;
 };
 
 #endif
