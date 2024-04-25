@@ -163,9 +163,6 @@ void OpenGLWindow::initGL()
     glCullFace(GL_BACK);
     glClearColor(0,0,0,1);
 
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
     // Note that this path is relative to your working directory
     // when running the program (IE if you run from within build
     // then you need to place these files in build as well)
@@ -177,47 +174,53 @@ void OpenGLWindow::initGL()
     glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
     */
     float vertices_tri[15] = 
-    {   // positions            // texture coords
-        0.0f,  0.5f, 0.0f,      0.5f, 1.0f,
-        -0.5f, -0.5f, 0.0f,     1.0f, 0.0f,
-        0.5f, -0.5f, 0.0f,      0.0f, 0.0f
+    {   // positions     
+        0.0f,  0.5f, 0.0f,      
+        -0.5f, -0.5f, 0.0f,     
+        0.5f, -0.5f, 0.0f      
     };
 
-    // locations
-    int vertexLoc = 0;
-    int texLoc = 1;
+    float tri_tcoords[6] = 
+    {
+        0.5f, 1.0f,
+        1.0f, 0.0f,
+        0.0f, 0.0f
+    };
 
+    
     // Load the model that we want to use and buffer the vertex attributes
     GeometryData geom;
-    geom.loadFromOBJFile("sphere.obj");
+    geom.loadFromOBJFile("sphere_correct.obj");
     void* vertices = geom.vertexData();
     void* texCoords = geom.textureCoordData();
     vertexCount = geom.vertexCount();
+    
+    // locations
+    int vertexLoc = 0;
+    int texLoc = 2;
 
-    // vertex buffer
+    // VAO
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    // VBO
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-
-    // texture buffer
-    glGenBuffers(1, &textureBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
-    
-    // load data to buffers
+    // load data
     glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
-    
-    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), texCoords, GL_STATIC_DRAW);
-
     // set attributes
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(vertexLoc);
-
+    // TBO
+    glGenBuffers(1, &textureBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
+    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), texCoords, GL_STATIC_DRAW);
     glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(texLoc);
     
     // create 1 texture obj and bind it
-    //unsigned int texture;
-    //glGenTextures(1, &texture);
-    //glBindTexture(GL_TEXTURE_2D, texture);  
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);  
 
     // set the texture wrapping/filtering options (on the currently bound texture object) - learnopengl.com/Getting-started/Textures
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
@@ -240,26 +243,22 @@ void OpenGLWindow::initGL()
 
     stbi_image_free(data);
 
-    
     //MODEL
     glm::mat4 model = glm::mat4(1.0f);
     //VIEW
     glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(0.0f,0.0f,5.0f);
+    glm::vec3 camera = glm::vec3(0.0f,0.0f,8.0f);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
     glm::mat4 view = glm::lookAt(camera, lookat, up);
     //PROJ
-    glm::mat4 proj = glm::perspective(glm::radians(100.0f), (float) 640/480, 0.1f, 100.0f);
-    // MVP
-    glm::mat4 MVP = proj * view * model;
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
 
-    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-    
-    unsigned int transformLoc = glGetUniformLocation(shader, "transform");
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(translate));
-
-    unsigned int MVPloc = glGetUniformLocation(shader, "MVP");
-    glUniformMatrix4fv(MVPloc, 1, GL_FALSE, glm::value_ptr(MVP));
+    unsigned int modelLoc = glGetUniformLocation(shader, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    unsigned int viewLoc = glGetUniformLocation(shader, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    unsigned int projLoc = glGetUniformLocation(shader, "projection");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     
     glPrintError("Setup complete", true);
 }
@@ -267,7 +266,7 @@ void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    glDrawArrays(GL_TRIANGLE_FAN, 0, vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
