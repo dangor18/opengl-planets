@@ -13,6 +13,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 using namespace std;
 
 int vertexCount;
@@ -169,30 +172,75 @@ void OpenGLWindow::initGL()
     shader = loadShaderProgram("simple.vert", "simple.frag");
     glUseProgram(shader);
 
-    // temp
+    /*
     int colorLoc = glGetUniformLocation(shader, "objectColor");
     glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
+    */
+    float vertices_tri[15] = 
+    {   // positions            // texture coords
+        0.0f,  0.5f, 0.0f,      0.5f, 1.0f,
+        -0.5f, -0.5f, 0.0f,     1.0f, 0.0f,
+        0.5f, -0.5f, 0.0f,      0.0f, 0.0f
+    };
 
-    int vertexLoc = glGetAttribLocation(shader, "position");
-    float vertices_tri[9] = { 0.0f,  0.5f, 0.0f,
-                         -0.5f, -0.5f, 0.0f,
-                          0.5f, -0.5f, 0.0f };
-    
+    // locations
+    int vertexLoc = 0;
+    int texLoc = 1;
+
     // Load the model that we want to use and buffer the vertex attributes
     GeometryData geom;
-    geom.loadFromOBJFile("sphere_correct.obj");
+    geom.loadFromOBJFile("sphere.obj");
     void* vertices = geom.vertexData();
+    void* texCoords = geom.textureCoordData();
     vertexCount = geom.vertexCount();
-    
+
+    // vertex buffer
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+    // texture buffer
+    glGenBuffers(1, &textureBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
     
-    //glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices_tri, GL_STATIC_DRAW);
-    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, false, 0, 0);
+    // load data to buffers
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
+    
+    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), texCoords, GL_STATIC_DRAW);
+
+    // set attributes
+    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(vertexLoc);
 
-    /*
+    glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(texLoc);
+    
+    // create 1 texture obj and bind it
+    //unsigned int texture;
+    //glGenTextures(1, &texture);
+    //glBindTexture(GL_TEXTURE_2D, texture);  
+
+    // set the texture wrapping/filtering options (on the currently bound texture object) - learnopengl.com/Getting-started/Textures
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // use stb to load image and save w,h,c
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load("Suns/diffuse0.jpg", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+
+    stbi_image_free(data);
+
+    
     //MODEL
     glm::mat4 model = glm::mat4(1.0f);
     //VIEW
@@ -212,14 +260,14 @@ void OpenGLWindow::initGL()
 
     unsigned int MVPloc = glGetUniformLocation(shader, "MVP");
     glUniformMatrix4fv(MVPloc, 1, GL_FALSE, glm::value_ptr(MVP));
-    */
+    
     glPrintError("Setup complete", true);
 }
 void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    
+    glDrawArrays(GL_TRIANGLE_FAN, 0, vertexCount);
 
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
