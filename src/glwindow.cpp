@@ -25,10 +25,9 @@ GLuint earth_texture;
 GLuint moon_texture;
 
 // lighting
-GLuint sunVAO;
 GLuint normBuffer;
+
 int vertexCount;
-int frame = 0;
 // speed variables
 float earth_speed = 1.0f;
 float moon_speed = 1.0f;
@@ -36,8 +35,6 @@ float moon_speed = 1.0f;
 float theta = 0;
 float beta = 0;
 
-// pause flag
-bool paused = false;
 // if paused set to 0 to stop updating angle
 int p = 1;
 
@@ -175,32 +172,14 @@ void OpenGLWindow::initGL()
     // Note that this path is relative to your working directory
     // when running the program (IE if you run from within build
     // then you need to place these files in build as well)
-    shader = loadShaderProgram("simple.vert", "simple.frag");
-    glUseProgram(shader);
-
-    /*
-    int colorLoc = glGetUniformLocation(shader, "objectColor");
-    glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f);
-    */
-    float vertices_tri[15] = 
-    {   // positions     
-        0.0f,  0.5f, 0.0f,      
-        -0.5f, -0.5f, 0.0f,     
-        0.5f, -0.5f, 0.0f      
-    };
-
-    float tri_tcoords[6] = 
-    {
-        0.5f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f
-    };
+    planet_shader = loadShaderProgram("planet.vert", "planet.frag");
+    sun_shader = loadShaderProgram("sun.vert", "sun.frag");
     
     // Load the model that we want to use and buffer the vertex attributes
     GeometryData geom;
     geom.loadFromOBJFile("sphere_correct.obj");
     void* vertices = geom.vertexData();
-    void* normals = geom.normalData();
+    //void* normals = geom.normalData();
     void* texCoords = geom.textureCoordData();
     vertexCount = geom.vertexCount();
     
@@ -209,37 +188,27 @@ void OpenGLWindow::initGL()
     int normLoc = 1;
     int texLoc = 2;
 
-    // VAOs
-    glGenVertexArrays(1, &planetVAO);
-    glGenVertexArrays(1, &sunVAO);
+    // SUN
+    // VAO
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     // VBO
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    // load data
     glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
-    // normals
-    glGenBuffers(1, &normBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, normBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), normals, GL_STATIC_DRAW);
     // TBO
     glGenBuffers(1, &textureBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
     glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), texCoords, GL_STATIC_DRAW);
-
-    // planet attributes
-    glBindVertexArray(planetVAO);
+    // normals
+    //glGenBuffers(1, &normBuffer);
+    //glBindBuffer(GL_ARRAY_BUFFER, normBuffer);
+    //glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), normals, GL_STATIC_DRAW);
+    //attributes
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(normLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(normLoc);
+    glEnableVertexAttribArray(vertexLoc);   // vertices
     glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(texLoc);
-    // sun attributes
-    glBindVertexArray(sunVAO);
-    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(texLoc);
+    glEnableVertexAttribArray(texLoc);      // textures
 
     // create texture objs
     glGenTextures(1, &sun_texture); 
@@ -269,8 +238,8 @@ void OpenGLWindow::initGL()
 
     // load earth texture
     glBindTexture(GL_TEXTURE_2D, earth_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     data = stbi_load("Earth/diffuse.png", &width, &height, &nrChannels, 0);
@@ -287,8 +256,8 @@ void OpenGLWindow::initGL()
 
     // load moon texture
     glBindTexture(GL_TEXTURE_2D, moon_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     data = stbi_load("Moon/diffuse.png", &width, &height, &nrChannels, 0);
@@ -312,12 +281,22 @@ void OpenGLWindow::initGL()
     glm::mat4 view = glm::lookAt(camera, lookat, up);
     //PROJ
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
-
-    unsigned int modelLoc = glGetUniformLocation(shader, "model");
+    
+    glUseProgram(planet_shader);
+    // set
+    unsigned int modelLoc = glGetUniformLocation(planet_shader, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    unsigned int viewLoc = glGetUniformLocation(shader, "view");
+    unsigned int viewLoc = glGetUniformLocation(planet_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    unsigned int projLoc = glGetUniformLocation(shader, "projection");
+    unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+
+    glUseProgram(sun_shader);
+    modelLoc = glGetUniformLocation(sun_shader, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    viewLoc = glGetUniformLocation(sun_shader, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    projLoc = glGetUniformLocation(sun_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     
     glPrintError("Setup complete", true);
@@ -327,14 +306,13 @@ void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    // get vertex var locations
-    unsigned int transformLoc = glGetUniformLocation(shader, "model");
+    glUseProgram(planet_shader);
+    // get model location
+    unsigned int transformLoc = glGetUniformLocation(planet_shader, "model");
     
     // calc angles
     theta += p*earth_speed;
     beta += p*moon_speed;
-    // draw planets (first bind to correct VAO)
-    glBindVertexArray(planetVAO);
 
     // Draw Earth
     glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -355,8 +333,10 @@ void OpenGLWindow::render()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
+    glUseProgram(sun_shader);
+    // get model location
+    transformLoc = glGetUniformLocation(sun_shader, "model");
     // Draw Sun at (0, 0, 0)
-    glBindVertexArray(sunVAO);
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, sun_texture);

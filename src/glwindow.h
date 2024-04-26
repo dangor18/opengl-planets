@@ -19,8 +19,9 @@ public:
 
 private:
     SDL_Window* sdlWin;
-    GLuint planetVAO;
-    GLuint shader;
+    GLuint vao;
+    GLuint planet_shader;
+    GLuint sun_shader;
     GLuint vertexBuffer;
 };
 
