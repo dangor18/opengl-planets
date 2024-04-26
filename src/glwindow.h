@@ -19,13 +19,9 @@ public:
 
 private:
     SDL_Window* sdlWin;
-    GLuint vao;
+    GLuint planetVAO;
     GLuint shader;
     GLuint vertexBuffer;
-    GLuint textureBuffer;
-    GLuint sun_texture;
-    GLuint earth_texture;
-    GLuint moon_texture;
 };
 
 #endif
