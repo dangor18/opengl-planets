@@ -212,8 +212,8 @@ void OpenGLWindow::initGL()
     // Normals
     glGenBuffers(1, &normBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), normals, GL_STATIC_DRAW);
-    glVertexAttribPointer(normLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), normals, GL_STATIC_DRAW);
+    glVertexAttribPointer(normLoc, 3, GL_FLOAT, GL_FALSE, 3* sizeof(float), (void*)0);
     glEnableVertexAttribArray(normLoc);
     // TBO
     glGenBuffers(1, &textureBuffer);
@@ -265,6 +265,8 @@ void OpenGLWindow::initGL()
     glUniform3f(lightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int lightColLoc = glGetUniformLocation(planet_shader, "lightColor");
     glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
+    unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * model)))));
 
     glUseProgram(sun_shader);
     modelLoc = glGetUniformLocation(sun_shader, "model");
@@ -298,6 +300,13 @@ void OpenGLWindow::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(sun_shader);
+
+    //VIEW
+    glm::vec3 lookat = glm::vec3(0.0f);
+    glm::vec3 camera = glm::vec3(0.0f,0.0f,8.0f);
+    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    glm::mat4 view = glm::lookAt(camera, lookat, up);
+
     // get vertex var locations
     unsigned int transformLoc = glGetUniformLocation(sun_shader, "model");
     
@@ -321,6 +330,8 @@ void OpenGLWindow::render()
     glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
     glm::mat4 earth_trans = earth_r * earth_t * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
+    unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * earth_trans)))));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, earth_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
@@ -330,6 +341,7 @@ void OpenGLWindow::render()
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * moon_trans)))));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
