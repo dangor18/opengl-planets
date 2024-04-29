@@ -15,6 +15,9 @@ public:
     void render();
     bool handleEvent(SDL_Event e);
     void cleanup();
+
+    // loads image data
+    void load_image(const char* file_name);
 };
 
 #endif

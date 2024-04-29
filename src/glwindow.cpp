@@ -235,44 +235,13 @@ void OpenGLWindow::initGL()
 
     // load and generate the texture from each file - taken from learnopengl.com/Getting-started/Textures
     glBindTexture(GL_TEXTURE_2D, sun_texture);
-    int width, height, nrChannels;
-    unsigned char *data = stbi_load("Suns/diffuse0.jpg", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load Sun texture" << std::endl;
-    }
-    stbi_image_free(data);
+    load_image("Suns/diffuse0.jpg");
 
     glBindTexture(GL_TEXTURE_2D, earth_texture);
-    data = stbi_load("Earth/diffuse.png", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load Earth texture" << std::endl;
-    }
-    stbi_image_free(data);
+    load_image("Earth/diffuse.png");
 
     glBindTexture(GL_TEXTURE_2D, moon_texture);
-    data = stbi_load("Moon/diffuse.png", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load Moon texture" << std::endl;
-    }
-    stbi_image_free(data);
+    load_image("Moon/diffuse.png");
 
     //MODEL
     glm::mat4 model = glm::mat4(1.0f);
@@ -293,7 +262,7 @@ void OpenGLWindow::initGL()
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
     unsigned int lightPosLoc = glGetUniformLocation(planet_shader, "lightPos");
-    glUniform3f(lightPosLoc, 0.0f, .0f, 0.0f);
+    glUniform3f(lightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int lightColLoc = glGetUniformLocation(planet_shader, "lightColor");
     glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
 
@@ -306,6 +275,23 @@ void OpenGLWindow::initGL()
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     glPrintError("Setup complete", true);
+}
+
+void OpenGLWindow::load_image(const char* file_name)
+{
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load(file_name, &width, &height, &nrChannels, 0);
+
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load image: " << file_name << std::endl;
+    }
+    stbi_image_free(data);
 }
 
 void OpenGLWindow::render()
