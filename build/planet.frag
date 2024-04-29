@@ -18,6 +18,6 @@ void main()
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
     
-    vec3 result = texture(ourTexture, TexCoord).xyz;
+    vec3 result = diffuse * texture(ourTexture, TexCoord).xyz;
     FragColor = vec4(result, 1.0);
 }
