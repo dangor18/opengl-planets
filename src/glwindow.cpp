@@ -7,12 +7,6 @@
 #include "glwindow.h"
 #include "geometry.h"
 
-#include <glm/glm.hpp>
-#include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -48,6 +42,12 @@ float beta = 0;
 
 // when press p set to 0
 int p = 1;
+
+// camera variables
+float x,y,z;
+
+// view matrix
+glm::mat4 view;
 
 const char* glGetErrorString(GLenum error)
 {
@@ -243,19 +243,16 @@ void OpenGLWindow::initGL()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
 
-    //MODEL
-    glm::mat4 model = glm::mat4(1.0f);
     //VIEW
     glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(0.0f,0.0f,8.0f);
+    x=0.0f;y=0.0f;z=8.0f;
+    glm::vec3 camera = glm::vec3(x,y,z);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    glm::mat4 view = glm::lookAt(camera, lookat, up);
+    view = glm::lookAt(camera, lookat, up);
     //PROJ
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
     
     glUseProgram(planet_shader);
-    unsigned int modelLoc = glGetUniformLocation(planet_shader, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     unsigned int viewLoc = glGetUniformLocation(planet_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
@@ -265,18 +262,63 @@ void OpenGLWindow::initGL()
     glUniform3f(lightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int lightColLoc = glGetUniformLocation(planet_shader, "lightColor");
     glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
-    unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
-    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * model)))));
 
     glUseProgram(sun_shader);
-    modelLoc = glGetUniformLocation(sun_shader, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     viewLoc = glGetUniformLocation(sun_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     projLoc = glGetUniformLocation(sun_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     glPrintError("Setup complete", true);
+}
+
+void OpenGLWindow::render()
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // use sun shader
+    glUseProgram(sun_shader);
+    unsigned int transformLoc = glGetUniformLocation(planet_shader, "model");
+
+    // Draw Sun at (0, 0, 0)
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+    glBindTexture(GL_TEXTURE_2D, sun_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+    // calc rotation angles
+    theta += p*earth_speed;
+    beta += p*moon_speed;
+
+    // use planet shader
+    glUseProgram(planet_shader);
+    transformLoc = glGetUniformLocation(planet_shader, "model");
+
+    // Draw Earth
+    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.2f, 0.0f, 0.0f));
+    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+    glm::mat4 earth_trans = earth_r * earth_t * earth_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
+    // lighting
+    unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * earth_trans)))));
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, earth_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+    // Draw Moon
+    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
+    glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, moon_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+    // Swap the front and back buffers on the window, effectively putting what we just "drew"
+    // onto the screen (whereas previously it only existed in memory)
+    SDL_GL_SwapWindow(sdlWin);
 }
 
 void OpenGLWindow::load_image(const char* file_name)
@@ -296,59 +338,25 @@ void OpenGLWindow::load_image(const char* file_name)
     stbi_image_free(data);
 }
 
-void OpenGLWindow::render()
+void OpenGLWindow::update_view()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(sun_shader);
-
-    //VIEW
     glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(0.0f,0.0f,8.0f);
-    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    glm::mat4 view = glm::lookAt(camera, lookat, up);
+    glm::vec3 camera = glm::vec3(x,y,z);
+    glm::vec3 up = glm::vec3(0.0f,0.0f,1.0f);
+    float radius = 8.0f;
+    float camX = sin(earth_speed) * radius;
+    float camZ = cos(earth_speed) * radius;
+    view = glm::lookAt(glm::vec3(camX, 0.0, camZ), lookat, up);
 
-    // get vertex var locations
-    unsigned int transformLoc = glGetUniformLocation(sun_shader, "model");
-    
-    // calc angles
-    theta += p*earth_speed;
-    beta += p*moon_speed;
-
-    // Draw Sun at (0, 0, 0)
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
-    // bind to correct texture
-    glBindTexture(GL_TEXTURE_2D, sun_texture);
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
+    // use planet shader
     glUseProgram(planet_shader);
-    // get vertex var locations
-    transformLoc = glGetUniformLocation(planet_shader, "model");
+    unsigned int viewLoc = glGetUniformLocation(planet_shader, "view");
+    glUniformMatrix3fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-    // Draw Earth
-    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.2f, 0.0f, 0.0f));
-    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
-    glm::mat4 earth_trans = earth_r * earth_t * earth_s;
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
-    unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
-    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * earth_trans)))));
-    // bind to correct texture
-    glBindTexture(GL_TEXTURE_2D, earth_texture);
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    // Draw Moon
-    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
-    glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
-    glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
-    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * moon_trans)))));
-    // bind to correct texture
-    glBindTexture(GL_TEXTURE_2D, moon_texture);
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-    // Swap the front and back buffers on the window, effectively putting what we just "drew"
-    // onto the screen (whereas previously it only existed in memory)
-    SDL_GL_SwapWindow(sdlWin);
+    // use sun shader
+    glUseProgram(sun_shader);
+    viewLoc = glGetUniformLocation(sun_shader, "view");
+    glUniformMatrix3fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 }
 
 // The program will exit if this function returns false
@@ -382,6 +390,37 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         if(e.key.keysym.sym == SDLK_RIGHT)
         {
             moon_speed+=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_q)
+        {
+            z+=1.0f;
+            update_view();
+        }
+
+        if(e.key.keysym.sym == SDLK_a)
+        {
+            x-=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_w)
+        {
+            y+=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_s)
+        {
+            y-=0.1;
+        }
+
+        if(e.key.keysym.sym == SDLK_e)
+        {
+            z+=1.0f;
+        }
+
+        if(e.key.keysym.sym == SDLK_d)
+        {
+            z-=0.1;
         }
 
         if(e.key.keysym.sym == SDLK_p)
