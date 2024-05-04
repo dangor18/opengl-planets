@@ -35,7 +35,7 @@ GLuint moon_texture;
 int vertexCount;
 
 // speed variables
-float earth_speed = 1.0f;
+float earth_speed = 0.5f;
 float moon_speed = 1.0f;
 // angles
 float theta = 0;
@@ -311,7 +311,7 @@ void OpenGLWindow::render()
     unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(earth_trans)))));
     unsigned int viewPosLoc = glGetUniformLocation(planet_shader, "viewPos");
-    glUniformMatrix3fv(viewPosLoc, 1, GL_FALSE, glm::value_ptr(camera));
+    glUniform3f(viewPosLoc, camera.x, camera.y, camera.z);
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, earth_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
