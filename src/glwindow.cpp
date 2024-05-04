@@ -45,7 +45,7 @@ float beta = 0;
 int p = 1;
 
 // camera variables
-float pitch, yaw, roll = glm::radians(0.0f);
+float pitch, yaw, roll = 0.0f;
 
 // view matrix
 glm::mat4 view;
@@ -265,19 +265,18 @@ void OpenGLWindow::initGL()
 
 void OpenGLWindow::render()
 {
-    /*
     // VIEW
-    glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(r*cos(p)*cos(a),0.0f,8.0f);
-    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    
-    x = c.x + r*cos(p)*cos(a)
-    y = c.y + r*sin(p)
-    z = c.z + r*cos(p)*sin(a) 
-    */
+    view = glm::mat4(1.0f);
     glm::vec3 lookat = glm::vec3(0.0f);
     glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    
+    glm::mat4 camera_rotx = glm::rotate(glm::mat4(1.0f), glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));   // rotate about the X-axis
+    glm::mat4 camera_roty = glm::rotate(glm::mat4(1.0f), glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));     // rotate about the Y-axis
+    glm::mat4 camera_rotz = glm::rotate(glm::mat4(1.0f), glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));    // rotate about the Z-axis
+    glm::mat4 camera_rotation = camera_rotz * camera_roty * camera_rotx;
+
+    camera = glm::vec3(camera_rotation * glm::vec4(camera, 1.0f));  // calculate new camera position
     view = glm::lookAt(camera, lookat, up);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -334,7 +333,7 @@ void OpenGLWindow::load_image(const char* file_name)
 {
     // get extension (png or jpg)
     std::string fileName(file_name);
-    std::string extension = fileName.substr(fileName.find_last_of('.') + 1);
+    std::string extension = fileName.substr(fileName.find('.') + 1);
 
     int width, height, nrChannels;
     unsigned char *data = stbi_load(file_name, &width, &height, &nrChannels, 0);
@@ -368,7 +367,7 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         {
             return false;
         }
-
+        /*
         if(e.key.keysym.sym == SDLK_UP)
         {
             earth_speed+=0.1;
@@ -379,44 +378,57 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
             earth_speed <= 1 ? earth_speed = 1 : earth_speed-=0.1;
         }
 
-        if(e.key.keysym.sym == SDLK_a)
+        if(e.key.keysym.sym == SDLK_LEFT)
         {
             moon_speed <= 1 ? moon_speed = 1 : moon_speed-=0.1;
         }
 
-        if(e.key.keysym.sym == SDLK_b)
+        if(e.key.keysym.sym == SDLK_RIGHT)
         {
             moon_speed+=0.1;
         }
+        */
 
-        if(e.key.keysym.sym == SDLK_q)
+        if(e.key.keysym.sym == SDLK_UP)
         {
-            pitch+=glm::radians(5.0f);
+            pitch-=1.0f;
+            // added to prevent look at flipping
+            if(pitch < -89.0f)
+                pitch = -89.0f;
         }
 
-        if(e.key.keysym.sym == SDLK_a)
+        if(e.key.keysym.sym == SDLK_DOWN)
         {
-            pitch-=glm::radians(5.0f);
+            pitch+=1.0f;
+            // added to prevent look at flipping
+            if(pitch > 89.0f)
+                pitch = 89.0f;
         }
 
-        if(e.key.keysym.sym == SDLK_w)
+        if(e.key.keysym.sym == SDLK_LEFT)
         {
-            yaw+=glm::radians(5.0f);
+            yaw-=1.0f;
         }
 
-        if(e.key.keysym.sym == SDLK_s)
+        if(e.key.keysym.sym == SDLK_RIGHT)
         {
-            yaw-=glm::radians(5.0f);
-        }
-
-        if(e.key.keysym.sym == SDLK_e)
-        {
-            roll+=glm::radians(5.0f);
+            yaw+=1.0f;
         }
 
         if(e.key.keysym.sym == SDLK_d)
         {
-            roll-=glm::radians(5.0f);
+            roll+=1.0f;
+        }
+
+        if(e.key.keysym.sym == SDLK_f)
+        {
+            roll-=1.0f;
+        }
+
+        // reset key
+        if(e.key.keysym.sym == SDLK_r)
+        {
+            pitch = roll = yaw = 0.0f;
         }
 
         if(e.key.keysym.sym == SDLK_p)
