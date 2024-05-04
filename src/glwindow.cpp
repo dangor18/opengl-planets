@@ -50,6 +50,10 @@ float pitch, yaw, roll = 0.0f;
 // view matrix
 glm::mat4 view;
 
+// movable light defaults
+glm::vec3 hoverLightPos = glm::vec3(8.0f, 8.0f, -8.0f);
+glm::vec3 hoverLightColour = glm::vec3(0.0f, 0.0f, 1.0f);
+
 const char* glGetErrorString(GLenum error)
 {
     switch(error)
@@ -251,11 +255,21 @@ void OpenGLWindow::initGL()
     unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
-    unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "lightPos");
+    // SUN
+    unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "lights[0].position");
     glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
-    unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "lightColor");
+    unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "lights[0].colour");
     glUniform3f(sunLightColLoc, 1.0f, 1.0f, 0.8f);
+    std::cout << sunLightPosLoc << " " << sunLightColLoc << "\n";
 
+    
+    // EXTRA 
+    unsigned int hoverLightPosLoc = glGetUniformLocation(planet_shader, "lights[1].position");
+    glUniform3fv(hoverLightPosLoc, 1, glm::value_ptr(hoverLightPos));
+    unsigned int hoverLightColLoc = glGetUniformLocation(planet_shader, "lights[1].colour");
+    glUniform3fv(hoverLightColLoc, 1, glm::value_ptr(hoverLightColour));
+    std::cout << hoverLightPosLoc << " " << hoverLightColLoc << "\n";
+    
     glUseProgram(sun_shader);
     projLoc = glGetUniformLocation(sun_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
@@ -322,7 +336,7 @@ void OpenGLWindow::render()
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
-    //lighting
+    // lighting
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(moon_trans)))));
     // bind to correct texture
