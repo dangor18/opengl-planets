@@ -251,10 +251,10 @@ void OpenGLWindow::initGL()
     unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
-    unsigned int lightPosLoc = glGetUniformLocation(planet_shader, "lightPos");
-    glUniform3f(lightPosLoc, 0.0f, 0.0f, 0.0f);
-    unsigned int lightColLoc = glGetUniformLocation(planet_shader, "lightColor");
-    glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
+    unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "lightPos");
+    glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
+    unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "lightColor");
+    glUniform3f(sunLightColLoc, 1.0f, 1.0f, 1.0f);
 
     glUseProgram(sun_shader);
     projLoc = glGetUniformLocation(sun_shader, "projection");
@@ -266,17 +266,18 @@ void OpenGLWindow::initGL()
 void OpenGLWindow::render()
 {
     // VIEW
-    view = glm::mat4(1.0f);
+    //view = glm::mat4(1.0f);
     glm::vec3 lookat = glm::vec3(0.0f);
     glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    
+    /*
     glm::mat4 camera_rotx = glm::rotate(glm::mat4(1.0f), glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));   // rotate about the X-axis
     glm::mat4 camera_roty = glm::rotate(glm::mat4(1.0f), glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));     // rotate about the Y-axis
     glm::mat4 camera_rotz = glm::rotate(glm::mat4(1.0f), glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));    // rotate about the Z-axis
     glm::mat4 camera_rotation = camera_rotz * camera_roty * camera_rotx;
 
     camera = glm::vec3(camera_rotation * glm::vec4(camera, 1.0f));  // calculate new camera position
+    */
     view = glm::lookAt(camera, lookat, up);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -310,6 +311,8 @@ void OpenGLWindow::render()
     // lighting
     unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * earth_trans)))));
+    unsigned int viewPosLoc = glGetUniformLocation(planet_shader, "viewPos");
+    glUniformMatrix3fv(viewPosLoc, 1, GL_FALSE, glm::value_ptr(camera));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, earth_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);

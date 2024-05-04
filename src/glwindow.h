@@ -24,7 +24,6 @@ public:
 
     // loads image data
     void load_image(const char* file_name);
-    void update_view();
 };
 
 #endif
