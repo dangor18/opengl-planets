@@ -230,7 +230,7 @@ void OpenGLWindow::initGL()
 
     // set the texture wrapping/filtering options (on the currently bound texture object)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -270,14 +270,13 @@ void OpenGLWindow::render()
     glm::vec3 lookat = glm::vec3(0.0f);
     glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    /*
     glm::mat4 camera_rotx = glm::rotate(glm::mat4(1.0f), glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));   // rotate about the X-axis
     glm::mat4 camera_roty = glm::rotate(glm::mat4(1.0f), glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));     // rotate about the Y-axis
     glm::mat4 camera_rotz = glm::rotate(glm::mat4(1.0f), glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));    // rotate about the Z-axis
     glm::mat4 camera_rotation = camera_rotz * camera_roty * camera_rotx;
 
     camera = glm::vec3(camera_rotation * glm::vec4(camera, 1.0f));  // calculate new camera position
-    */
+    
     view = glm::lookAt(camera, lookat, up);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -323,6 +322,9 @@ void OpenGLWindow::render()
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
+    //lighting
+    MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * moon_trans)))));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
