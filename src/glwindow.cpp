@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <stdio.h>
 
 #include "SDL.h"
@@ -44,7 +45,7 @@ float beta = 0;
 int p = 1;
 
 // camera variables
-float x,y,z;
+float pitch, yaw, roll = glm::radians(0.0f);
 
 // view matrix
 glm::mat4 view;
@@ -243,18 +244,10 @@ void OpenGLWindow::initGL()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
 
-    //VIEW
-    glm::vec3 lookat = glm::vec3(0.0f);
-    x=0.0f;y=0.0f;z=8.0f;
-    glm::vec3 camera = glm::vec3(x,y,z);
-    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    view = glm::lookAt(camera, lookat, up);
     //PROJ
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
     
     glUseProgram(planet_shader);
-    unsigned int viewLoc = glGetUniformLocation(planet_shader, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
@@ -264,8 +257,6 @@ void OpenGLWindow::initGL()
     glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
 
     glUseProgram(sun_shader);
-    viewLoc = glGetUniformLocation(sun_shader, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     projLoc = glGetUniformLocation(sun_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -274,11 +265,27 @@ void OpenGLWindow::initGL()
 
 void OpenGLWindow::render()
 {
+    /*
+    // VIEW
+    glm::vec3 lookat = glm::vec3(0.0f);
+    glm::vec3 camera = glm::vec3(r*cos(p)*cos(a),0.0f,8.0f);
+    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    
+    x = c.x + r*cos(p)*cos(a)
+    y = c.y + r*sin(p)
+    z = c.z + r*cos(p)*sin(a) 
+    */
+    glm::vec3 lookat = glm::vec3(0.0f);
+    glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
+    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    view = glm::lookAt(camera, lookat, up);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // use sun shader
     glUseProgram(sun_shader);
-    unsigned int transformLoc = glGetUniformLocation(planet_shader, "model");
+    unsigned int viewLoc = glGetUniformLocation(sun_shader, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    unsigned int transformLoc = glGetUniformLocation(sun_shader, "model");
 
     // Draw Sun at (0, 0, 0)
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
@@ -291,6 +298,8 @@ void OpenGLWindow::render()
 
     // use planet shader
     glUseProgram(planet_shader);
+    viewLoc = glGetUniformLocation(planet_shader, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     transformLoc = glGetUniformLocation(planet_shader, "model");
 
     // Draw Earth
@@ -323,12 +332,21 @@ void OpenGLWindow::render()
 
 void OpenGLWindow::load_image(const char* file_name)
 {
+    // get extension (png or jpg)
+    std::string fileName(file_name);
+    std::string extension = fileName.substr(fileName.find_last_of('.') + 1);
+
     int width, height, nrChannels;
     unsigned char *data = stbi_load(file_name, &width, &height, &nrChannels, 0);
 
+    // first check data was loaded correctly
     if (data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        if (extension == "jpg")
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        if (extension == "png")
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
@@ -336,27 +354,6 @@ void OpenGLWindow::load_image(const char* file_name)
         std::cout << "Failed to load image: " << file_name << std::endl;
     }
     stbi_image_free(data);
-}
-
-void OpenGLWindow::update_view()
-{
-    glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(x,y,z);
-    glm::vec3 up = glm::vec3(0.0f,0.0f,1.0f);
-    float radius = 8.0f;
-    float camX = sin(earth_speed) * radius;
-    float camZ = cos(earth_speed) * radius;
-    view = glm::lookAt(glm::vec3(camX, 0.0, camZ), lookat, up);
-
-    // use planet shader
-    glUseProgram(planet_shader);
-    unsigned int viewLoc = glGetUniformLocation(planet_shader, "view");
-    glUniformMatrix3fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-    // use sun shader
-    glUseProgram(sun_shader);
-    viewLoc = glGetUniformLocation(sun_shader, "view");
-    glUniformMatrix3fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 }
 
 // The program will exit if this function returns false
@@ -382,45 +379,44 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
             earth_speed <= 1 ? earth_speed = 1 : earth_speed-=0.1;
         }
 
-        if(e.key.keysym.sym == SDLK_LEFT)
+        if(e.key.keysym.sym == SDLK_a)
         {
             moon_speed <= 1 ? moon_speed = 1 : moon_speed-=0.1;
         }
 
-        if(e.key.keysym.sym == SDLK_RIGHT)
+        if(e.key.keysym.sym == SDLK_b)
         {
             moon_speed+=0.1;
         }
 
         if(e.key.keysym.sym == SDLK_q)
         {
-            z+=1.0f;
-            update_view();
+            pitch+=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_a)
         {
-            x-=0.1;
+            pitch-=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_w)
         {
-            y+=0.1;
+            yaw+=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_s)
         {
-            y-=0.1;
+            yaw-=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_e)
         {
-            z+=1.0f;
+            roll+=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_d)
         {
-            z-=0.1;
+            roll-=glm::radians(5.0f);
         }
 
         if(e.key.keysym.sym == SDLK_p)
