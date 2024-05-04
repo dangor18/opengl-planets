@@ -254,7 +254,7 @@ void OpenGLWindow::initGL()
     unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "lightPos");
     glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "lightColor");
-    glUniform3f(sunLightColLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(sunLightColLoc, 1.0f, 1.0f, 0.8f);
 
     glUseProgram(sun_shader);
     projLoc = glGetUniformLocation(sun_shader, "projection");
@@ -303,13 +303,13 @@ void OpenGLWindow::render()
 
     // Draw Earth
     glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.2f, 0.0f, 0.0f));
-    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.4f, 0.0f, 0.0f));
+    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f));
     glm::mat4 earth_trans = earth_r * earth_t * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
     // lighting
     unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
-    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * earth_trans)))));
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(earth_trans)))));
     unsigned int viewPosLoc = glGetUniformLocation(planet_shader, "viewPos");
     glUniformMatrix3fv(viewPosLoc, 1, GL_FALSE, glm::value_ptr(camera));
     // bind to correct texture
@@ -324,7 +324,7 @@ void OpenGLWindow::render()
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
     //lighting
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
-    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(glm::mat3(view * moon_trans)))));
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(moon_trans)))));
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
