@@ -51,8 +51,13 @@ float pitch, yaw, roll = 0.0f;
 glm::mat4 view;
 
 // movable light defaults
-glm::vec3 hoverLightPos = glm::vec3(8.0f, 8.0f, -8.0f);
-glm::vec3 hoverLightColour = glm::vec3(0.0f, 0.0f, 1.0f);
+float light1_x = 0;
+float light1_z = 0;
+float light1_rad = 1.3f;
+glm::vec3 light1Colour = glm::vec3(1.0f, 0.0f, 0.0f);
+float alpha = 0;
+float light_speed = 0.005f;
+bool light1_active = true;
 
 const char* glGetErrorString(GLenum error)
 {
@@ -256,20 +261,17 @@ void OpenGLWindow::initGL()
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
     // SUN
-    unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "lights[0].position");
+    unsigned int sunLightPosLoc = glGetUniformLocation(planet_shader, "sunPos");
     glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
-    unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "lights[0].colour");
+    unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "sunColour");
     glUniform3f(sunLightColLoc, 1.0f, 1.0f, 0.8f);
-    std::cout << sunLightPosLoc << " " << sunLightColLoc << "\n";
 
-    
-    // EXTRA 
-    unsigned int hoverLightPosLoc = glGetUniformLocation(planet_shader, "lights[1].position");
-    glUniform3fv(hoverLightPosLoc, 1, glm::value_ptr(hoverLightPos));
-    unsigned int hoverLightColLoc = glGetUniformLocation(planet_shader, "lights[1].colour");
-    glUniform3fv(hoverLightColLoc, 1, glm::value_ptr(hoverLightColour));
-    std::cout << hoverLightPosLoc << " " << hoverLightColLoc << "\n";
-    
+    // LIGHT 1
+    unsigned int light1PosLoc = glGetUniformLocation(planet_shader, "light1Pos");
+    glUniform3f(light1PosLoc, light1_x, 0.0f, light1_z);
+    unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
+    glUniform3f(light1ColLoc, light1Colour.r, light1Colour.g, light1Colour.b);
+
     glUseProgram(sun_shader);
     projLoc = glGetUniformLocation(sun_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
@@ -280,7 +282,6 @@ void OpenGLWindow::initGL()
 void OpenGLWindow::render()
 {
     // VIEW
-    //view = glm::mat4(1.0f);
     glm::vec3 lookat = glm::vec3(0.0f);
     glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
     glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
@@ -290,8 +291,8 @@ void OpenGLWindow::render()
     glm::mat4 camera_rotation = camera_rotz * camera_roty * camera_rotx;
 
     camera = glm::vec3(camera_rotation * glm::vec4(camera, 1.0f));  // calculate new camera position
-    
     view = glm::lookAt(camera, lookat, up);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // use sun shader
@@ -300,11 +301,25 @@ void OpenGLWindow::render()
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     unsigned int transformLoc = glGetUniformLocation(sun_shader, "model");
 
-    // Draw Sun at (0, 0, 0)
+    // Draw Sun at (0, 0, 0) World Space
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+    glUniform1i(glGetUniformLocation(sun_shader, "textureSwitch"), 1);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
+    // Draw light
+    if (light1_active)
+    {
+        alpha += p*light_speed;
+        light1_x = light1_rad * sin(alpha); light1_z = light1_rad * cos(alpha);
+        glm::mat4 light1_t = glm::translate(glm::mat4(1.0f), glm::vec3(light1_x, 0.0f, light1_z));
+        glm::mat4 light1_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+        glm::mat4 light1_trans = light1_t * light1_s;
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(light1_trans));
+        glUniform1i(glGetUniformLocation(sun_shader, "textureSwitch"), 0);
+        glUniform3f(glGetUniformLocation(sun_shader, "lightColour"), light1Colour.r, light1Colour.g, light1Colour.b);
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    }
     // calc rotation angles
     theta += p*earth_speed;
     beta += p*moon_speed;
@@ -315,6 +330,18 @@ void OpenGLWindow::render()
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     transformLoc = glGetUniformLocation(planet_shader, "model");
 
+    // light 1
+    if (light1_active)
+    {
+        unsigned int light1PosLoc = glGetUniformLocation(planet_shader, "light1Pos");
+        glUniform3f(light1PosLoc, light1_x, 0.0f, light1_z);
+        unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
+        glUniform3f(light1ColLoc, light1Colour.r, light1Colour.g, light1Colour.b);
+    } else
+    {
+        unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
+        glUniform3f(light1ColLoc, 0.0f, 0.0f, 0.0f);
+    }
     // Draw Earth
     glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.4f, 0.0f, 0.0f));
@@ -449,11 +476,21 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         {
             pitch = roll = yaw = 0.0f;
         }
-
+        
+        // pause
         if(e.key.keysym.sym == SDLK_p)
         {
             if (p) { p = 0; }
             else { p = 1; }
+        }
+
+        // turn off light1
+        if(e.key.keysym.sym == SDLK_o)
+        {
+            if (light1_active)
+                light1_active = false;
+            else
+                light1_active = true;
         }
     }
     return true;
