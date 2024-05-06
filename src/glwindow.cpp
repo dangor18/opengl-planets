@@ -35,6 +35,8 @@ GLuint skybox_shader;
 GLuint sun_texture;
 GLuint earth_texture;
 GLuint moon_texture;
+GLuint mars_texture;
+GLuint venus_texture;
 GLuint skybox_texture;
 
 // object vertex count
@@ -42,7 +44,7 @@ int vertexCount;
 
 // speed variables
 float earth_speed = 0.005f;
-float moon_speed = 0.01;
+float moon_speed = 0.01f;
 // angles
 float theta = 0;
 float beta = 0;
@@ -57,11 +59,11 @@ float pitch, yaw, roll = 0.0f;
 glm::mat4 view;
 
 // movable light defaults
-float light1_rad = 1.15f;
+float light1_rad = 0.75f;
 glm::vec3 light1Colour = glm::vec3(1.0f, 0.0f, 0.0f);
 float alpha = 0;
 float light_speed = 0.005f;
-bool light1_active = true;
+bool light1_active = false;
 
 const char* glGetErrorString(GLenum error)
 {
@@ -300,6 +302,8 @@ void OpenGLWindow::initGL()
     glGenTextures(1, &sun_texture); 
     glGenTextures(1, &earth_texture);
     glGenTextures(1, &moon_texture);
+    glGenTextures(1, &mars_texture);
+    glGenTextures(1, &venus_texture);
 
     // set the texture wrapping/filtering options (on the currently bound texture object)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
@@ -318,6 +322,12 @@ void OpenGLWindow::initGL()
 
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
+
+    glBindTexture(GL_TEXTURE_2D, mars_texture);
+    load_image("Mars/diffuse.jpg");
+
+    glBindTexture(GL_TEXTURE_2D, venus_texture);
+    load_image("Venus/diffuse.jpg");
 
     // load skybox
     vector<std::string> faces
@@ -381,20 +391,21 @@ void OpenGLWindow::render()
     glm::mat4 skybox_view = glm::mat4(glm::mat3(view)); // remove translation from the view matrix
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(skybox_view));
 
+    // DRAW SKYBOX
     glDepthMask(GL_FALSE);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox_texture);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glDepthMask(GL_TRUE);
     
-    // use sun shader
+    // use light shader
     glUseProgram(light_shader);
     glBindVertexArray(sphereVAO);
     viewLoc = glGetUniformLocation(light_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     unsigned int transformLoc = glGetUniformLocation(light_shader, "model");
 
-    // Draw Sun at (0, 0, 0) World Space
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+    // DRAW SUN
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 0.7f, 0.7f))));
     glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 1);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
@@ -406,7 +417,7 @@ void OpenGLWindow::render()
         alpha += p*light_speed;
         light1_x = light1_rad * sin(alpha); light1_z = light1_rad * cos(alpha);
         glm::mat4 light1_t = glm::translate(glm::mat4(1.0f), glm::vec3(light1_x, 0.0f, light1_z));
-        glm::mat4 light1_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+        glm::mat4 light1_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 0.05f));
         glm::mat4 light1_trans = light1_t * light1_s;
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(light1_trans));
         glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 0);
@@ -435,10 +446,11 @@ void OpenGLWindow::render()
         unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
         glUniform3f(light1ColLoc, 0.0f, 0.0f, 0.0f);
     }
-    // Draw Earth
+
+    // DRAW EARTH
     glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.2f, cos(theta) * 2.2f, 0.0f));
     glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta*100), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+    glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
     glm::mat4 earth_trans = earth_t * earth_r * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
     // lighting
@@ -450,7 +462,7 @@ void OpenGLWindow::render()
     glBindTexture(GL_TEXTURE_2D, earth_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
-    // Draw Moon
+    // DRAW MOON
     glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, cos(beta) * 1.75f, 0.0f));
     glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
@@ -463,6 +475,32 @@ void OpenGLWindow::render()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
+    // DRAW VENUS
+    glm::mat4 venus_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.2f, cos(beta) * 1.2f, 0.0f));
+    glm::mat4 venus_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 venus_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 venus_trans = venus_t * venus_r * venus_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(venus_trans));
+    // lighting
+    MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(venus_trans)))));
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, venus_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    
+    // DRAW MARS
+    glm::mat4 mars_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta+90) * 3.0f, cos(beta+90) * 3.0f, 0.0f));
+    glm::mat4 mars_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 mars_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+    glm::mat4 mars_trans = mars_t * mars_r * mars_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(mars_trans));
+    // lighting
+    MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(mars_trans)))));
+    // bind to correct texture
+    glBindTexture(GL_TEXTURE_2D, mars_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
     SDL_GL_SwapWindow(sdlWin);
