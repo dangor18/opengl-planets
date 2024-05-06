@@ -3,6 +3,7 @@
 
 #include <GL/glew.h>
 #include <string>
+#include <vector>
 
 #include "geometry.h"
 
@@ -23,7 +24,9 @@ public:
     void cleanup();
 
     // loads image data
-    void load_image(const char* file_name);
+    void load_image(std::string file_name);
+    // load cubemap data
+    void load_cubemap(std::vector<std::string> faces);
 };
 
 #endif

@@ -17,19 +17,23 @@ using namespace std;
 SDL_Window* sdlWin;
 
 // buffers
-GLuint vao;
-GLuint vertexBuffer;
+GLuint sphereVAO;
+GLuint skyboxVAO;
+GLuint sphereVBO;
+GLuint skyboxVBO;
 GLuint normBuffer;
 GLuint textureBuffer;
 
 // shaders
 GLuint planet_shader;
-GLuint sun_shader;
+GLuint light_shader;
+GLuint skybox_shader;
 
 // textures
 GLuint sun_texture;
 GLuint earth_texture;
 GLuint moon_texture;
+GLuint skybox_texture;
 
 // object vertex count
 int vertexCount;
@@ -193,45 +197,102 @@ void OpenGLWindow::initGL()
     // Note that this path is relative to your working directory
     // when running the program (IE if you run from within build
     // then you need to place these files in build as well)
-    sun_shader = loadShaderProgram("sun.vert", "sun.frag");
+    light_shader = loadShaderProgram("light.vert", "light.frag");
     planet_shader = loadShaderProgram("planet.vert", "planet.frag");
+    skybox_shader = loadShaderProgram("skybox.vert", "skybox.frag");
     glUseProgram(planet_shader);
     
     // Load the model that we want to use and buffer the vertex attributes
     GeometryData geom;
     geom.loadFromOBJFile("sphere_correct.obj");
-    void* vertices = geom.vertexData();
-    void* normals = geom.normalData();
-    void* texCoords = geom.textureCoordData();
+    void* sphere_vertices = geom.vertexData();
+    void* sphere_normals = geom.normalData();
+    void* sphere_texCoords = geom.textureCoordData();
     vertexCount = geom.vertexCount();
+    
+    // skybox vertices
+    float skybox_vertices[] = 
+    {        
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f
+    };
     
     // locations
     int vertexLoc = 0;
     int normLoc = 1;
     int texLoc = 2;
 
-    // VAO
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    // VBO
-    glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), vertices, GL_STATIC_DRAW);
+    // sphere VAO
+    glGenVertexArrays(1, &sphereVAO);
+    glBindVertexArray(sphereVAO);
+    // sphere VBO
+    glGenBuffers(1, &sphereVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), sphere_vertices, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(vertexLoc);
     // Normals
     glGenBuffers(1, &normBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), normals, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 3*vertexCount*sizeof(float), sphere_normals, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(normLoc, 3, GL_FLOAT, GL_FALSE, 3* sizeof(float), (void*)0);
     glEnableVertexAttribArray(normLoc);
     // TBO
     glGenBuffers(1, &textureBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
-    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), texCoords, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), sphere_texCoords, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(texLoc);
-    
+
+    // skybox VAO
+    glGenVertexArrays(1, &skyboxVAO);
+    glBindVertexArray(skyboxVAO);
+    // skybox VBO
+    glGenBuffers(1, &skyboxVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, 3*36*sizeof(float), skybox_vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(vertexLoc);
+
     // create texture objs
     glGenTextures(1, &sun_texture); 
     glGenTextures(1, &earth_texture);
@@ -244,6 +305,7 @@ void OpenGLWindow::initGL()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // load and generate the texture from each file - taken from learnopengl.com/Getting-started/Textures
+    std::cout << "Loading textures..." << std::endl;
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     load_image("Suns/diffuse0.jpg");
 
@@ -253,11 +315,30 @@ void OpenGLWindow::initGL()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
 
+    // load skybox
+    vector<std::string> faces
+    {
+        "bkg1_right.jpg",
+        "bkg1_left.jpg",
+        "bkg1_top.jpg",
+        "bkg1_bot.jpg",
+        "bkg1_front.jpg",
+        "bkg1_back.jpg"
+    };
+    load_cubemap(faces);
+
+    std::cout << "Texture loaded." << std::endl;
+
     //PROJ
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
     
+    // skybox 
+    glUseProgram(skybox_shader);
+    unsigned int projLoc = glGetUniformLocation(skybox_shader, "projection");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+    // planets
     glUseProgram(planet_shader);
-    unsigned int projLoc = glGetUniformLocation(planet_shader, "projection");
+    projLoc = glGetUniformLocation(planet_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
     // light uniforms
     // SUN
@@ -272,8 +353,8 @@ void OpenGLWindow::initGL()
     unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
     glUniform3f(light1ColLoc, light1Colour.r, light1Colour.g, light1Colour.b);
 
-    glUseProgram(sun_shader);
-    projLoc = glGetUniformLocation(sun_shader, "projection");
+    glUseProgram(light_shader);
+    projLoc = glGetUniformLocation(light_shader, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     glPrintError("Setup complete", true);
@@ -295,15 +376,28 @@ void OpenGLWindow::render()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // use skybox shader
+    glUseProgram(skybox_shader);
+    glBindVertexArray(skyboxVAO);
+    unsigned int viewLoc = glGetUniformLocation(skybox_shader, "view");
+    glm::mat4 skybox_view = glm::mat4(glm::mat3(view)); // remove translation from the view matrix
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(skybox_view));
+
+    glDepthMask(GL_FALSE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox_texture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDepthMask(GL_TRUE);
+    
     // use sun shader
-    glUseProgram(sun_shader);
-    unsigned int viewLoc = glGetUniformLocation(sun_shader, "view");
+    glUseProgram(light_shader);
+    glBindVertexArray(sphereVAO);
+    viewLoc = glGetUniformLocation(light_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    unsigned int transformLoc = glGetUniformLocation(sun_shader, "model");
+    unsigned int transformLoc = glGetUniformLocation(light_shader, "model");
 
     // Draw Sun at (0, 0, 0) World Space
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
-    glUniform1i(glGetUniformLocation(sun_shader, "textureSwitch"), 1);
+    glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 1);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -316,8 +410,8 @@ void OpenGLWindow::render()
         glm::mat4 light1_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
         glm::mat4 light1_trans = light1_t * light1_s;
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(light1_trans));
-        glUniform1i(glGetUniformLocation(sun_shader, "textureSwitch"), 0);
-        glUniform3f(glGetUniformLocation(sun_shader, "lightColour"), light1Colour.r, light1Colour.g, light1Colour.b);
+        glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 0);
+        glUniform3f(glGetUniformLocation(light_shader, "lightColour"), light1Colour.r, light1Colour.g, light1Colour.b);
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     }
     // calc rotation angles
@@ -375,14 +469,13 @@ void OpenGLWindow::render()
     SDL_GL_SwapWindow(sdlWin);
 }
 
-void OpenGLWindow::load_image(const char* file_name)
+void OpenGLWindow::load_image(std::string file_name)
 {
     // get extension (png or jpg)
-    std::string fileName(file_name);
-    std::string extension = fileName.substr(fileName.find('.') + 1);
+    std::string extension = file_name.substr(file_name.find('.') + 1);
 
     int width, height, nrChannels;
-    unsigned char *data = stbi_load(file_name, &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load(file_name.c_str(), &width, &height, &nrChannels, 0);
 
     // first check data was loaded correctly
     if (data)
@@ -399,6 +492,37 @@ void OpenGLWindow::load_image(const char* file_name)
         std::cout << "Failed to load image: " << file_name << std::endl;
     }
     stbi_image_free(data);
+}
+
+void OpenGLWindow::load_cubemap(std::vector<std::string> faces)
+{
+    // generate and bind texture object
+    glGenTextures(1, &skybox_texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox_texture);
+    int width, height, nrChannels;
+
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        std::string file_name = "Skybox/" + faces[i];
+        unsigned char *data = stbi_load(file_name.c_str(), &width, &height, &nrChannels, 0);
+        // first check data was loaded correctly
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            std::cout << file_name << std::endl;
+        }
+        else
+        {
+            std::cout << "Failed to load cubemap image at path" << i << std::endl;
+        }
+        stbi_image_free(data);
+    }
+    
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 }
 
 // The program will exit if this function returns false
@@ -498,12 +622,13 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
 
 void OpenGLWindow::cleanup()
 {
-    glDeleteBuffers(1, &vertexBuffer);
+    glDeleteBuffers(1, &sphereVBO);
     glDeleteBuffers(1, &textureBuffer);
     glDeleteBuffers(1, &sun_texture);
     glDeleteBuffers(1, &earth_texture);
     glDeleteBuffers(1, &moon_texture);
 
-    glDeleteVertexArrays(1, &vao);
+    glDeleteVertexArrays(1, &sphereVAO);
+    glDeleteVertexArrays(1, &skyboxVAO);
     SDL_DestroyWindow(sdlWin);
 }
