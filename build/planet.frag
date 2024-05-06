@@ -33,7 +33,7 @@ vec3 calcPhong(vec3 lightColour, vec3 lightPos)
     vec3 ambient = ambientStrength * lightColour;
 
     // diffusion lighting
-    float diffusionStrength = 0.0;
+    float diffusionStrength = 0.1;
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), diffusionStrength);

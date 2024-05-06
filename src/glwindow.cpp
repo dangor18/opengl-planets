@@ -15,6 +15,8 @@ using namespace std;
 
 // window
 SDL_Window* sdlWin;
+float win_width = 1280.0f;
+float win_height = 720.0f;
 
 // buffers
 GLuint sphereVAO;
@@ -39,8 +41,8 @@ GLuint skybox_texture;
 int vertexCount;
 
 // speed variables
-float earth_speed = 0.5f;
-float moon_speed = 1.0f;
+float earth_speed = 0.005f;
+float moon_speed = 0.01;
 // angles
 float theta = 0;
 float beta = 0;
@@ -55,9 +57,7 @@ float pitch, yaw, roll = 0.0f;
 glm::mat4 view;
 
 // movable light defaults
-float light1_x = 0;
-float light1_z = 0;
-float light1_rad = 1.3f;
+float light1_rad = 1.15f;
 glm::vec3 light1Colour = glm::vec3(1.0f, 0.0f, 0.0f);
 float alpha = 0;
 float light_speed = 0.005f;
@@ -161,7 +161,7 @@ void OpenGLWindow::initGL()
 
     sdlWin = SDL_CreateWindow("OpenGL Prac 1",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              640, 480, SDL_WINDOW_OPENGL);
+                              win_width, win_height, SDL_WINDOW_OPENGL);
     if(!sdlWin)
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Error", "Unable to create window", 0);
@@ -282,6 +282,9 @@ void OpenGLWindow::initGL()
     glBufferData(GL_ARRAY_BUFFER, 2*vertexCount*sizeof(float), sphere_texCoords, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(texLoc);
+    // Tangents
+
+    // Bitangents
 
     // skybox VAO
     glGenVertexArrays(1, &skyboxVAO);
@@ -306,6 +309,7 @@ void OpenGLWindow::initGL()
 
     // load and generate the texture from each file - taken from learnopengl.com/Getting-started/Textures
     std::cout << "Loading textures..." << std::endl;
+    stbi_set_flip_vertically_on_load(true);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     load_image("Suns/diffuse0.jpg");
 
@@ -330,7 +334,7 @@ void OpenGLWindow::initGL()
     std::cout << "Texture loaded." << std::endl;
 
     //PROJ
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float) 640/480, 0.1f, 100.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), win_width/win_height, 0.1f, 100.0f);
     
     // skybox 
     glUseProgram(skybox_shader);
@@ -346,12 +350,6 @@ void OpenGLWindow::initGL()
     glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "sunColour");
     glUniform3f(sunLightColLoc, 1.0f, 1.0f, 0.8f);
-
-    // LIGHT 1
-    unsigned int light1PosLoc = glGetUniformLocation(planet_shader, "light1Pos");
-    glUniform3f(light1PosLoc, light1_x, 0.0f, light1_z);
-    unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
-    glUniform3f(light1ColLoc, light1Colour.r, light1Colour.g, light1Colour.b);
 
     glUseProgram(light_shader);
     projLoc = glGetUniformLocation(light_shader, "projection");
@@ -401,6 +399,7 @@ void OpenGLWindow::render()
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
+    float light1_x; float light1_z;
     // Draw light
     if (light1_active)
     {
@@ -437,10 +436,10 @@ void OpenGLWindow::render()
         glUniform3f(light1ColLoc, 0.0f, 0.0f, 0.0f);
     }
     // Draw Earth
-    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(2.4f, 0.0f, 0.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.2f, cos(theta) * 2.2f, 0.0f));
+    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f));
-    glm::mat4 earth_trans = earth_r * earth_t * earth_s;
+    glm::mat4 earth_trans = earth_t * earth_r * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
     // lighting
     unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
@@ -452,10 +451,10 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
     // Draw Moon
-    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(1.8f, 0.0f, 0.0f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, cos(beta) * 1.75f, 0.0f));
+    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
-    glm::mat4 moon_trans = earth_trans * moon_r * moon_t * moon_s;
+    glm::mat4 moon_trans = earth_t * earth_s * moon_t * moon_r * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
     // lighting
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
