@@ -43,14 +43,21 @@ GLuint skybox_texture;
 int vertexCount;
 
 // speed variables
+float rot_speed = 0.01f;
 float earth_speed = 0.005f;
 float moon_speed = 0.01f;
+float planet_speed = 0.01f;
 // angles
 float theta = 0;
 float beta = 0;
+float mew = 0;
+float sigma = 0;
 
 // when press p set to 0
 int p = 1;
+
+// for adjusting look up vector
+int c = 1;
 
 // camera variables
 float pitch, yaw, roll = 0.0f;
@@ -315,27 +322,27 @@ void OpenGLWindow::initGL()
     std::cout << "Loading textures..." << std::endl;
     stbi_set_flip_vertically_on_load(true);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
-    load_image("Suns/diffuse0.jpg");
+    load_image("Suns/diffuse.png");
 
     glBindTexture(GL_TEXTURE_2D, earth_texture);
-    load_image("Earth/diffuse.png");
+    load_image("Earth/diffuse_day.png");
 
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
 
     glBindTexture(GL_TEXTURE_2D, mars_texture);
-    load_image("Mars/diffuse.jpg");
+    load_image("Mars/diffuse.png");
 
     glBindTexture(GL_TEXTURE_2D, venus_texture);
-    load_image("Venus/diffuse.jpg");
+    load_image("Venus/diffuse.png");
 
     // load skybox
     vector<std::string> faces
     {
         "bkg1_right.jpg",
         "bkg1_left.jpg",
-        "bkg1_top.jpg",
         "bkg1_bot.jpg",
+        "bkg1_top.jpg",
         "bkg1_front.jpg",
         "bkg1_back.jpg"
     };
@@ -373,7 +380,7 @@ void OpenGLWindow::render()
     // VIEW
     glm::vec3 lookat = glm::vec3(0.0f);
     glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
-    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
+    glm::vec3 up = glm::vec3(0.0f,c*1.0f,0.0f);
     glm::mat4 camera_rotx = glm::rotate(glm::mat4(1.0f), glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));   // rotate about the X-axis
     glm::mat4 camera_roty = glm::rotate(glm::mat4(1.0f), glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));     // rotate about the Y-axis
     glm::mat4 camera_rotz = glm::rotate(glm::mat4(1.0f), glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));    // rotate about the Z-axis
@@ -427,6 +434,8 @@ void OpenGLWindow::render()
     // calc rotation angles
     theta += p*earth_speed;
     beta += p*moon_speed;
+    mew += p*planet_speed;
+    sigma += p*rot_speed;
 
     // use planet shader
     glUseProgram(planet_shader);
@@ -448,8 +457,8 @@ void OpenGLWindow::render()
     }
 
     // DRAW EARTH
-    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.2f, cos(theta) * 2.2f, 0.0f));
-    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(theta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.2f, 0.0f, cos(theta) * 2.2f));
+    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
     glm::mat4 earth_trans = earth_t * earth_r * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
@@ -463,8 +472,8 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
     // DRAW MOON
-    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, cos(beta) * 1.75f, 0.0f));
-    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, 0.0f, cos(beta) * 1.75f));
+    glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*200), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_t * earth_s * moon_t * moon_r * moon_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(moon_trans));
@@ -476,8 +485,8 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
     // DRAW VENUS
-    glm::mat4 venus_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.2f, cos(beta) * 1.2f, 0.0f));
-    glm::mat4 venus_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 venus_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(mew) * 1.2f, 0.0f, cos(mew) * 1.2f));
+    glm::mat4 venus_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 venus_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 venus_trans = venus_t * venus_r * venus_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(venus_trans));
@@ -489,8 +498,8 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     
     // DRAW MARS
-    glm::mat4 mars_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta+90) * 3.0f, cos(beta+90) * 3.0f, 0.0f));
-    glm::mat4 mars_r = glm::rotate(glm::mat4(1.0f), glm::radians(beta*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 mars_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(mew+90) * 3.0f, 0.0f, cos(mew+90) * 3.0f));
+    glm::mat4 mars_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 mars_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
     glm::mat4 mars_trans = mars_t * mars_r * mars_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(mars_trans));
@@ -574,42 +583,51 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         {
             return false;
         }
-        /*
+        
+        if(e.key.keysym.sym == SDLK_2)
+        {
+            earth_speed+=0.005;
+        }
+
+        if(e.key.keysym.sym == SDLK_1)
+        {
+            earth_speed <= 0.005 ? earth_speed = 0.005 : earth_speed-=0.005;
+        }
+
+        if(e.key.keysym.sym == SDLK_3)
+        {
+            moon_speed <= 0.01 ? moon_speed = 0.01 : moon_speed-=0.005;
+        }
+
+        if(e.key.keysym.sym == SDLK_4)
+        {
+            moon_speed+=0.005;
+        }
+
         if(e.key.keysym.sym == SDLK_UP)
         {
-            earth_speed+=0.1;
+            pitch -= 1.0f;
+            // normalize to lie in [-180, 180]
+            if (pitch < -180.0f)
+                pitch += 360.0f;
+
+            if (pitch > -90.0f && pitch < 90.0f)
+                c = 1;
+            else
+                c = -1;
         }
 
         if(e.key.keysym.sym == SDLK_DOWN)
         {
-            earth_speed <= 1 ? earth_speed = 1 : earth_speed-=0.1;
-        }
+            pitch += 1.0f;
+            // normalize to lie in [-180, 180]
+            if (pitch > 180.0f)
+                pitch -= 360.0f;
 
-        if(e.key.keysym.sym == SDLK_LEFT)
-        {
-            moon_speed <= 1 ? moon_speed = 1 : moon_speed-=0.1;
-        }
-
-        if(e.key.keysym.sym == SDLK_RIGHT)
-        {
-            moon_speed+=0.1;
-        }
-        */
-
-        if(e.key.keysym.sym == SDLK_UP)
-        {
-            pitch-=1.0f;
-            // added to prevent look at flipping
-            if(pitch < -89.0f)
-                pitch = -89.0f;
-        }
-
-        if(e.key.keysym.sym == SDLK_DOWN)
-        {
-            pitch+=1.0f;
-            // added to prevent look at flipping
-            if(pitch > 89.0f)
-                pitch = 89.0f;
+            if (pitch > -90.0f && pitch < 90.0f)
+                c = 1;
+            else
+                c = -1;
         }
 
         if(e.key.keysym.sym == SDLK_LEFT)
