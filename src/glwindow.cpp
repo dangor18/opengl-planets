@@ -33,7 +33,8 @@ GLuint skybox_shader;
 
 // textures
 GLuint sun_texture;
-GLuint earth_texture;
+GLuint earth_day_texture;
+GLuint earth_night_texture;
 GLuint moon_texture;
 GLuint mars_texture;
 GLuint venus_texture;
@@ -307,7 +308,8 @@ void OpenGLWindow::initGL()
 
     // create texture objs
     glGenTextures(1, &sun_texture); 
-    glGenTextures(1, &earth_texture);
+    glGenTextures(1, &earth_day_texture);
+    glGenTextures(1, &earth_night_texture);
     glGenTextures(1, &moon_texture);
     glGenTextures(1, &mars_texture);
     glGenTextures(1, &venus_texture);
@@ -324,8 +326,11 @@ void OpenGLWindow::initGL()
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     load_image("Suns/diffuse.png");
 
-    glBindTexture(GL_TEXTURE_2D, earth_texture);
+    glBindTexture(GL_TEXTURE_2D, earth_day_texture);
     load_image("Earth/diffuse_day.png");
+
+    glBindTexture(GL_TEXTURE_2D, earth_night_texture);
+    load_image("Earth/diffuse_night2.png");
 
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
@@ -414,6 +419,7 @@ void OpenGLWindow::render()
     // DRAW SUN
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 0.7f, 0.7f))));
     glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 1);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -468,9 +474,15 @@ void OpenGLWindow::render()
     unsigned int viewPosLoc = glGetUniformLocation(planet_shader, "viewPos");
     glUniform3f(viewPosLoc, camera.x, camera.y, camera.z);
     // bind to correct texture
-    glBindTexture(GL_TEXTURE_2D, earth_texture);
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, earth_day_texture);
+    glUniform1i(glGetUniformLocation(planet_shader, "ourTexture"), 0);
 
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, earth_night_texture);
+    glUniform1i(glGetUniformLocation(planet_shader, "nightTexture"), 1);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    /*
     // DRAW MOON
     glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, 0.0f, cos(beta) * 1.75f));
     glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*200), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -509,7 +521,7 @@ void OpenGLWindow::render()
     // bind to correct texture
     glBindTexture(GL_TEXTURE_2D, mars_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    
+    */
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
     SDL_GL_SwapWindow(sdlWin);
@@ -680,7 +692,8 @@ void OpenGLWindow::cleanup()
     glDeleteBuffers(1, &sphereVBO);
     glDeleteBuffers(1, &textureBuffer);
     glDeleteBuffers(1, &sun_texture);
-    glDeleteBuffers(1, &earth_texture);
+    glDeleteBuffers(1, &earth_day_texture);
+    glDeleteBuffers(1, &earth_night_texture);
     glDeleteBuffers(1, &moon_texture);
 
     glDeleteVertexArrays(1, &sphereVAO);

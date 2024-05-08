@@ -14,6 +14,7 @@ uniform vec3 light1Colour;
 uniform vec3 viewPos;
 // texture    
 uniform sampler2D ourTexture;
+uniform sampler2D nightTexture;
 
 // declare function
 vec3 calcPhong(vec3 lightColour, vec3 lightPos);
@@ -22,8 +23,19 @@ void main()
 {  	 
     // final calc
     vec3 sumPhong = calcPhong(sunColour, sunPos) + calcPhong(light1Colour, light1Pos);
-    vec3 result = sumPhong * texture(ourTexture, TexCoord).rgb;
-    FragColor = vec4(result, 1.0);
+
+    // night time mapping
+    float diffusionStrength = 0.0;
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(sunPos - FragPos);
+    float lightIntensity = max(dot(norm, lightDir), diffusionStrength);
+
+    float blendFactor = clamp(1-lightIntensity, 0.0, 1.0);
+    vec4 dayColour = texture(ourTexture, TexCoord);
+    vec4 nightColour = texture(nightTexture, TexCoord);
+    vec3 finalColour = sumPhong * mix(dayColour, nightColour, blendFactor).rgb;
+
+    FragColor = vec4(finalColour, 1.0);
 }
 
 vec3 calcPhong(vec3 lightColour, vec3 lightPos)
@@ -33,7 +45,7 @@ vec3 calcPhong(vec3 lightColour, vec3 lightPos)
     vec3 ambient = ambientStrength * lightColour;
 
     // diffusion lighting
-    float diffusionStrength = 0.2;
+    float diffusionStrength = 0.3;
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), diffusionStrength);
