@@ -169,7 +169,7 @@ void OpenGLWindow::initGL()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-    sdlWin = SDL_CreateWindow("OpenGL Prac 1",
+    sdlWin = SDL_CreateWindow("OpenGL Prac 2",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               win_width, win_height, SDL_WINDOW_OPENGL);
     if(!sdlWin)
@@ -474,15 +474,17 @@ void OpenGLWindow::render()
     unsigned int viewPosLoc = glGetUniformLocation(planet_shader, "viewPos");
     glUniform3f(viewPosLoc, camera.x, camera.y, camera.z);
     // bind to correct texture
+    glUniform1i(glGetUniformLocation(planet_shader, "earthSwitch"), 1);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, earth_day_texture);
     glUniform1i(glGetUniformLocation(planet_shader, "ourTexture"), 0);
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, earth_night_texture);
-    glUniform1i(glGetUniformLocation(planet_shader, "nightTexture"), 1);
+    glUniform1i(glGetUniformLocation(planet_shader, "earthNightTexture"), 1);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    /*
+    glUniform1i(glGetUniformLocation(planet_shader, "earthSwitch"), 0);
+
     // DRAW MOON
     glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, 0.0f, cos(beta) * 1.75f));
     glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*200), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -493,6 +495,7 @@ void OpenGLWindow::render()
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(moon_trans)))));
     // bind to correct texture
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -506,6 +509,7 @@ void OpenGLWindow::render()
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(venus_trans)))));
     // bind to correct texture
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, venus_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     
@@ -519,9 +523,10 @@ void OpenGLWindow::render()
     MVNloc = glGetUniformLocation(planet_shader, "MVN");
     glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(mars_trans)))));
     // bind to correct texture
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, mars_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    */
+    
     // Swap the front and back buffers on the window, effectively putting what we just "drew"
     // onto the screen (whereas previously it only existed in memory)
     SDL_GL_SwapWindow(sdlWin);

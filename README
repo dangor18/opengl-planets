@@ -21,8 +21,8 @@ CONTROLS:
 
 MASTERY:
 1. Added extra planets (Venus and Mars) and adjusted how planets orbit sun to be more realistic.
-2. Added a skybox
-3. Added ...
+2. Added a skybox.
+3. Earth texture shows city lights when it's night time.
 
 Resources used:
 - part 1:
@@ -33,6 +33,6 @@ Resources used:
     https://learnopengl.com/Getting-started/Textures - Textures
     https://learnopengl.com/Getting-started/Camera - Camera
     https://learnopengl.com/Lighting/Basic-Lighting - Phong lighting
-    https://learnopengl.com/Advanced-OpenGL/Cubemaps and https://opengameart.org/content/space-skyboxes-0 - skybox
-    https://www.solarsystemscope.com/textures/ - other planet textures (used Venus, Mars, Eart)
+    https://learnopengl.com/Advanced-OpenGL/Cubemaps and https://opengameart.org/content/space-skyboxes-0 - skybox tutorial and skybox texture
+    https://www.solarsystemscope.com/textures/ - other planet textures (used Venus, Mars, Earth day, Earth night)
     https://jaxry.github.io/panorama-to-cubemap/ - to create cubemaps images from regular images
