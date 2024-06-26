@@ -21,6 +21,7 @@ uniform int earthSwitch;
 
 // declare function
 vec3 calcPhong(vec3 lightColour, vec3 lightPos, float ambientStrength, float diffusionStrength, float specularStrength);
+float lightIntensity(vec3 lightColour, vec3 lightPos, float diffusionStrength);
 
 void main()
 {  	 
@@ -28,27 +29,38 @@ void main()
     // final calc
     if (earthSwitch == 1) 
     {
-        vec3 sumPhong = calcPhong(sunColour, sunPos, 0.0, 1.0, 0.65) + calcPhong(light1Colour, light1Pos, 0.0, 1.0, 0.65);
+        vec3 sumPhong = calcPhong(sunColour, sunPos, 0.1, 0.2, 0.8) + calcPhong(light1Colour, light1Pos, 0.1, 0.2, 0.8);
 
-        // night time mapping
-        float diffusionStrength = 0.0;
-        vec3 norm = normalize(Normal);
-        vec3 lightDir = normalize(sunPos - FragPos);
-        float lightIntensity = max(dot(norm, lightDir), diffusionStrength);
-
-        float blendFactor = clamp(1-lightIntensity, 0.0, 1.0);
+        // Combine light intensities
+        float combinedLightIntensity = max(lightIntensity(sunColour, sunPos, 0.2), lightIntensity(light1Colour, light1Pos, 0.2));
+        float blendFactor = clamp(1.0 - combinedLightIntensity, 0.0, 1.0);
+        
         vec4 dayColour = texture(ourTexture, TexCoord);
+        dayColour = vec4(sumPhong * dayColour.rgb, 1.0);
         vec4 nightColour = texture(earthNightTexture, TexCoord);
-        finalColour = sumPhong * mix(dayColour, nightColour, blendFactor).rgb;
+        // mix texture colours
+        vec4 mixed_texture = mix(dayColour, nightColour, blendFactor);
+        
+        finalColour = mixed_texture.rgb;
+        FragColor = vec4(finalColour, 1.0);
     } else
     {
-        vec3 sumPhong = calcPhong(sunColour, sunPos, 0.1, 0.2, 0.65) + calcPhong(light1Colour, light1Pos, 0.1, 0.2, 0.65);
+        vec3 sumPhong = calcPhong(sunColour, sunPos, 0.1, 0.2, 0.8) + calcPhong(light1Colour, light1Pos, 0.1, 0.2, 0.8);
         vec4 planetColour = texture(ourTexture, TexCoord);
 
         finalColour = sumPhong * planetColour.rgb;
+        FragColor = vec4(finalColour, planetColour.a);
     }
+}
 
-    FragColor = vec4(finalColour, 1.0);
+float lightIntensity(vec3 lightColour, vec3 lightPos, float diffusionStrength)
+{
+    if (lightColour == vec3(0.0)) return 0.0;
+
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float lightIntensity = max(dot(norm, lightDir), diffusionStrength);
+    return lightIntensity;
 }
 
 vec3 calcPhong(vec3 lightColour, vec3 lightPos, float ambientStrength, float diffusionStrength, float specularStrength)
@@ -65,7 +77,7 @@ vec3 calcPhong(vec3 lightColour, vec3 lightPos, float ambientStrength, float dif
     // specular lighting
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm); 
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
     vec3 specular = specularStrength * spec * lightColour;
 
     return (ambient + diffuse + specular);

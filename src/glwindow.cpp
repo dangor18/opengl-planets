@@ -35,9 +35,11 @@ GLuint skybox_shader;
 GLuint sun_texture;
 GLuint earth_day_texture;
 GLuint earth_night_texture;
+GLuint earth_cloud_texture;
 GLuint moon_texture;
 GLuint mars_texture;
 GLuint venus_texture;
+GLuint mercury_texture;
 GLuint skybox_texture;
 
 // object vertex count
@@ -46,7 +48,7 @@ int vertexCount;
 // speed variables
 float rot_speed = 0.01f;
 float earth_speed = 0.005f;
-float moon_speed = 0.01f;
+float moon_speed = 0.02f;
 float planet_speed = 0.01f;
 // angles
 float theta = 0;
@@ -67,8 +69,15 @@ float pitch, yaw, roll = 0.0f;
 glm::mat4 view;
 
 // movable light defaults
-float light1_rad = 0.75f;
-glm::vec3 light1Colour = glm::vec3(1.0f, 0.0f, 0.0f);
+float light1_rad = 4.0f;
+glm::vec3 light1Colour[] = {
+    glm::vec3(1.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 1.0f, 0.0f),
+    glm::vec3(0.0f, 0.0f, 1.0f),
+    glm::vec3(1.0f, 1.0f, 1.0f),
+};
+
+int i = 0;
 float alpha = 0;
 float light_speed = 0.005f;
 bool light1_active = false;
@@ -313,6 +322,7 @@ void OpenGLWindow::initGL()
     glGenTextures(1, &moon_texture);
     glGenTextures(1, &mars_texture);
     glGenTextures(1, &venus_texture);
+    glGenTextures(1, &mercury_texture);
 
     // set the texture wrapping/filtering options (on the currently bound texture object)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
@@ -330,7 +340,10 @@ void OpenGLWindow::initGL()
     load_image("Earth/diffuse_day.png");
 
     glBindTexture(GL_TEXTURE_2D, earth_night_texture);
-    load_image("Earth/diffuse_night2.png");
+    load_image("Earth/diffuse_night4.png");
+
+    glBindTexture(GL_TEXTURE_2D, earth_cloud_texture);
+    load_image("Earth/clouds.png");
 
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     load_image("Moon/diffuse.png");
@@ -340,6 +353,9 @@ void OpenGLWindow::initGL()
 
     glBindTexture(GL_TEXTURE_2D, venus_texture);
     load_image("Venus/diffuse.png");
+
+    glBindTexture(GL_TEXTURE_2D, mercury_texture);
+    load_image("Mercury/diffuse.png");
 
     // load skybox
     vector<std::string> faces
@@ -372,6 +388,12 @@ void OpenGLWindow::initGL()
     glUniform3f(sunLightPosLoc, 0.0f, 0.0f, 0.0f);
     unsigned int sunLightColLoc = glGetUniformLocation(planet_shader, "sunColour");
     glUniform3f(sunLightColLoc, 1.0f, 1.0f, 0.8f);
+    
+    // light1
+    unsigned int light1PosLoc = glGetUniformLocation(planet_shader, "light1Pos");
+    glUniform3f(light1PosLoc, light1_rad * cos(alpha), 0.0f, light1_rad * sin(alpha));
+    unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
+    glUniform3f(light1ColLoc, light1Colour[i].r, light1Colour[i].g, light1Colour[i].b);
 
     glUseProgram(light_shader);
     projLoc = glGetUniformLocation(light_shader, "projection");
@@ -384,7 +406,7 @@ void OpenGLWindow::render()
 {
     // VIEW
     glm::vec3 lookat = glm::vec3(0.0f);
-    glm::vec3 camera = glm::vec3(0.0f, 0.0f, 8.0f);
+    glm::vec3 camera = glm::vec3(0.0f, 0.0f, 6.0f);
     glm::vec3 up = glm::vec3(0.0f,c*1.0f,0.0f);
     glm::mat4 camera_rotx = glm::rotate(glm::mat4(1.0f), glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));   // rotate about the X-axis
     glm::mat4 camera_roty = glm::rotate(glm::mat4(1.0f), glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));     // rotate about the Y-axis
@@ -409,39 +431,44 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glDepthMask(GL_TRUE);
     
-    // use light shader
+    // Use light shader
     glUseProgram(light_shader);
     glBindVertexArray(sphereVAO);
+
     viewLoc = glGetUniformLocation(light_shader, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     unsigned int transformLoc = glGetUniformLocation(light_shader, "model");
 
     // DRAW SUN
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 0.7f, 0.7f))));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1.0f), glm::vec3(0.6f, 0.6f, 0.6f))));
     glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 1);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sun_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
-    float light1_x; float light1_z;
-    // Draw light
-    if (light1_active)
-    {
-        alpha += p*light_speed;
-        light1_x = light1_rad * sin(alpha); light1_z = light1_rad * cos(alpha);
+    // DRAW LIGHT1
+    float light1_x = 0.0f;
+    float light1_z = 0.0f;
+
+    if (light1_active) {
+        alpha += p * light_speed;
+        light1_x = light1_rad * sin(alpha);
+        light1_z = light1_rad * cos(alpha);
         glm::mat4 light1_t = glm::translate(glm::mat4(1.0f), glm::vec3(light1_x, 0.0f, light1_z));
         glm::mat4 light1_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 0.05f));
         glm::mat4 light1_trans = light1_t * light1_s;
+        transformLoc = glGetUniformLocation(light_shader, "model");
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(light1_trans));
         glUniform1i(glGetUniformLocation(light_shader, "textureSwitch"), 0);
-        glUniform3f(glGetUniformLocation(light_shader, "lightColour"), light1Colour.r, light1Colour.g, light1Colour.b);
+        glUniform3f(glGetUniformLocation(light_shader, "lightColour"), light1Colour[i].r, light1Colour[i].g, light1Colour[i].b);
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     }
-    // calc rotation angles
-    theta += p*earth_speed;
-    beta += p*moon_speed;
-    mew += p*planet_speed;
-    sigma += p*rot_speed;
+
+    // update angles
+    theta += p * earth_speed;
+    beta += p * moon_speed;
+    mew += p * planet_speed;
+    sigma += p * rot_speed;
 
     // use planet shader
     glUseProgram(planet_shader);
@@ -449,24 +476,23 @@ void OpenGLWindow::render()
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     transformLoc = glGetUniformLocation(planet_shader, "model");
 
-    // light 1
-    if (light1_active)
-    {
+    // set light uniforms in planet shader
+    if (light1_active) {
         unsigned int light1PosLoc = glGetUniformLocation(planet_shader, "light1Pos");
         glUniform3f(light1PosLoc, light1_x, 0.0f, light1_z);
         unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
-        glUniform3f(light1ColLoc, light1Colour.r, light1Colour.g, light1Colour.b);
-    } else
-    {
+        glUniform3f(light1ColLoc, light1Colour[i].r, light1Colour[i].g, light1Colour[i].b);
+    } else {
         unsigned int light1ColLoc = glGetUniformLocation(planet_shader, "light1Colour");
         glUniform3f(light1ColLoc, 0.0f, 0.0f, 0.0f);
     }
 
     // DRAW EARTH
-    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.2f, 0.0f, cos(theta) * 2.2f));
-    glm::mat4 earth_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 earth_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.4f, 0.0f, cos(theta) * 2.4f));
+    glm::mat4 earth_r1 = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 earth_r2 = glm::rotate(glm::mat4(1.0f), glm::radians(-23.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 earth_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-    glm::mat4 earth_trans = earth_t * earth_r * earth_s;
+    glm::mat4 earth_trans = earth_t * earth_r1 * earth_r2 * earth_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(earth_trans));
     // lighting
     unsigned int MVNloc = glGetUniformLocation(planet_shader, "MVN");
@@ -482,11 +508,30 @@ void OpenGLWindow::render()
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, earth_night_texture);
     glUniform1i(glGetUniformLocation(planet_shader, "earthNightTexture"), 1);
+
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     glUniform1i(glGetUniformLocation(planet_shader, "earthSwitch"), 0);
 
+    // DRAW CLOUDS
+    glm::mat4 cloud_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(theta) * 2.4f, 0.0f, cos(theta) * 2.4f));
+    glm::mat4 cloud_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*70), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 cloud_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.31f, 0.31f, 0.31f));
+    glm::mat4 cloud_trans = cloud_t * cloud_r * cloud_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(cloud_trans));
+    // lighting
+    MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(cloud_trans)))));
+    // bind to correct texture
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, earth_cloud_texture);
+    
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    glDisable(GL_BLEND);
+
     // DRAW MOON
-    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.75f, 0.0f, cos(beta) * 1.75f));
+    glm::mat4 moon_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(beta) * 1.5f, 0.0f, cos(beta) * 1.5f));
     glm::mat4 moon_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*200), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 moon_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
     glm::mat4 moon_trans = earth_t * earth_s * moon_t * moon_r * moon_s;
@@ -499,10 +544,24 @@ void OpenGLWindow::render()
     glBindTexture(GL_TEXTURE_2D, moon_texture);
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
+    // DRAW MERCURY
+    glm::mat4 merc_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(2*mew+90) * 0.75f, 0.0f, cos(2*mew+90) * 0.75f));
+    glm::mat4 merc_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*200), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 merc_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 0.05f));
+    glm::mat4 merc_trans = merc_t * merc_r * merc_s;
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(merc_trans));
+    // lighting
+    MVNloc = glGetUniformLocation(planet_shader, "MVN");
+    glUniformMatrix3fv(MVNloc, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(merc_trans)))));
+    // bind to correct texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mercury_texture);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
     // DRAW VENUS
     glm::mat4 venus_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(mew) * 1.2f, 0.0f, cos(mew) * 1.2f));
-    glm::mat4 venus_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 venus_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+    glm::mat4 venus_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*-100), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 venus_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.25f, 0.25f, 0.25f));
     glm::mat4 venus_trans = venus_t * venus_r * venus_s;
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(venus_trans));
     // lighting
@@ -514,7 +573,7 @@ void OpenGLWindow::render()
     glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     
     // DRAW MARS
-    glm::mat4 mars_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(mew+90) * 3.0f, 0.0f, cos(mew+90) * 3.0f));
+    glm::mat4 mars_t = glm::translate(glm::mat4(1.0f), glm::vec3(sin(mew+90) * 3.3f, 0.0f, cos(mew+90) * 3.3f));
     glm::mat4 mars_r = glm::rotate(glm::mat4(1.0f), glm::radians(sigma*100), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 mars_s = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
     glm::mat4 mars_trans = mars_t * mars_r * mars_s;
@@ -613,7 +672,7 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
 
         if(e.key.keysym.sym == SDLK_3)
         {
-            moon_speed <= 0.01 ? moon_speed = 0.01 : moon_speed-=0.005;
+            moon_speed <= 0.02 ? moon_speed = 0.02 : moon_speed-=0.005;
         }
 
         if(e.key.keysym.sym == SDLK_4)
@@ -671,6 +730,7 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
         if(e.key.keysym.sym == SDLK_r)
         {
             pitch = roll = yaw = 0.0f;
+            c = 1.0f;
         }
         
         // pause
@@ -688,6 +748,13 @@ bool OpenGLWindow::handleEvent(SDL_Event e)
             else
                 light1_active = true;
         }
+
+        // change light1 colour
+        if(e.key.keysym.sym == SDLK_l)
+        {
+            i++;
+            if (i == 4) i = 0;
+        }
     }
     return true;
 }
@@ -699,6 +766,7 @@ void OpenGLWindow::cleanup()
     glDeleteBuffers(1, &sun_texture);
     glDeleteBuffers(1, &earth_day_texture);
     glDeleteBuffers(1, &earth_night_texture);
+    glDeleteBuffers(1, &earth_cloud_texture);
     glDeleteBuffers(1, &moon_texture);
 
     glDeleteVertexArrays(1, &sphereVAO);
