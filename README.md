@@ -1,7 +1,8 @@
 # OpenGL Planet Scene in Action:
 
 
-https://github.com/dangor18/opengl-planets/assets/157729397/f8f17968-c17f-4a12-9c18-4129a8feee83
+https://github.com/dangor18/opengl-planets/assets/157729397/5af7cf79-2b43-422c-aea5-deb394169e14
+
 
 
 ## REQUIREMENTS:
